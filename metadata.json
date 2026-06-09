@@ -1,0 +1,6 @@
+{
+  "name": "UTAGEファネル・顧客管理ダッシュボード",
+  "description": "UTAGE（マーケティング自動化ツール）に特化した、ファネル設計および顧客・プロジェクト管理ダッシュボードのプロトタイプです。",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
