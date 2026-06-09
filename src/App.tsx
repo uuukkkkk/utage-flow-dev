@@ -6,8 +6,10 @@ import TemplateList from './components/TemplateList';
 import SettingsView from './components/Settings';
 import ProjectDetailModal from './components/ProjectDetailModal';
 import NewProjectModal from './components/NewProjectModal';
-import { mockClients, mockProjects, mockTemplates } from './data/mockData';
-import { Project, Client, ProjectStatus, Template } from './types';
+import AnalysisView from './components/AnalysisView';
+import TeamManagement from './components/TeamManagement';
+import { mockClients, mockProjects, mockTemplates, mockTeamMembers } from './data/mockData';
+import { Project, Client, ProjectStatus, Template, TeamMember, UserRole } from './types';
 import { motion, AnimatePresence } from 'motion/react';
 import { LayoutDashboard, Users, Workflow, Settings as SettingsIcon, Bell } from 'lucide-react';
 
@@ -19,6 +21,27 @@ export default function App() {
   const [projects, setProjects] = useState<Project[]>(mockProjects);
   const [clients, setClients] = useState<Client[]>(mockClients);
   const [templates, setTemplates] = useState<Template[]>(mockTemplates);
+  const [members, setMembers] = useState<TeamMember[]>(mockTeamMembers);
+
+  // Add member handler
+  const handleAddMember = (newMemberData: Omit<TeamMember, 'id' | 'joinedAt'>) => {
+    const newMember: TeamMember = {
+      ...newMemberData,
+      id: `m-${Date.now()}`,
+      joinedAt: new Date().toISOString().split('T')[0]
+    };
+    setMembers([...members, newMember]);
+  };
+
+  // Remove member handler
+  const handleRemoveMember = (id: string) => {
+    setMembers(members.filter(m => m.id !== id));
+  };
+
+  // Update member role handler
+  const handleUpdateRole = (id: string, newRole: UserRole) => {
+    setMembers(members.map(m => m.id === id ? { ...m, role: newRole } : m));
+  };
 
   // Add template handler
   const handleAddTemplate = (newTempData: Omit<Template, 'id' | 'stepsCount'> & { steps: string[] }) => {
@@ -102,6 +125,7 @@ export default function App() {
             clients={clients}
             onOpenAddModal={() => setIsAddModalOpen(true)}
             onOpenDetailModal={handleOpenDetailModal}
+            onUpdateProject={handleUpdateProject}
           />
         );
       case 'clients':
@@ -111,6 +135,22 @@ export default function App() {
             projects={projects}
             onAddClient={handleAddClient}
             onUpdateClient={handleUpdateClient}
+          />
+        );
+      case 'analysis':
+        return (
+          <AnalysisView 
+            projects={projects}
+            clients={clients}
+          />
+        );
+      case 'team':
+        return (
+          <TeamManagement 
+            members={members}
+            onAddMember={handleAddMember}
+            onRemoveMember={handleRemoveMember}
+            onUpdateRole={handleUpdateRole}
           />
         );
       case 'templates':
@@ -154,6 +194,8 @@ export default function App() {
             <span className="text-sm font-bold text-slate-700">
               {activeTab === 'projects' ? 'プロジェクト管理' :
                activeTab === 'clients' ? '顧客一覧' :
+               activeTab === 'analysis' ? '分析・統計ダッシュボード' :
+               activeTab === 'team' ? '組織・専属メンバー' :
                activeTab === 'templates' ? 'ファネルテンプレート' :
                'システム設定'}
             </span>
@@ -210,6 +252,7 @@ export default function App() {
             isOpen={isAddModalOpen}
             onClose={() => setIsAddModalOpen(false)}
             clients={clients}
+            members={members}
             onAddProject={handleAddProject}
           />
         )}
@@ -224,6 +267,7 @@ export default function App() {
               setIsDetailModalOpen(false);
               setSelectedDetailedProject(null);
             }}
+            members={members}
             onUpdateProject={handleUpdateProject}
             onDeleteProject={handleDeleteProject}
           />

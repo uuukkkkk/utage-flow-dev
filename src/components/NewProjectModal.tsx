@@ -1,17 +1,18 @@
 import React, { useState } from 'react';
 import { X, Plus, Sparkles } from 'lucide-react';
 import { motion } from 'motion/react';
-import { Project, FunnelType, ProjectStatus, FunnelStep, Client } from '../types';
+import { Project, FunnelType, ProjectStatus, FunnelStep, Client, TeamMember } from '../types';
 import { mockTemplates } from '../data/mockData';
 
 interface NewProjectModalProps {
   isOpen: boolean;
   onClose: () => void;
   clients: Client[];
+  members: TeamMember[];
   onAddProject: (project: Omit<Project, 'id' | 'progress'> & { id?: string, progress?: number }) => void;
 }
 
-export default function NewProjectModal({ isOpen, onClose, clients, onAddProject }: NewProjectModalProps) {
+export default function NewProjectModal({ isOpen, onClose, clients, members, onAddProject }: NewProjectModalProps) {
   const [clientId, setClientId] = useState('');
   const [newClientName, setNewClientName] = useState('');
   const [useCustomClient, setUseCustomClient] = useState(false);

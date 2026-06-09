@@ -7,7 +7,9 @@ import {
   Menu, 
   X, 
   TrendingUp,
-  Workflow
+  Workflow,
+  Contact,
+  UserCheck
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
@@ -21,7 +23,9 @@ interface SidebarProps {
 export default function Sidebar({ activeTab, setActiveTab, isOpen, setIsOpen }: SidebarProps) {
   const menuItems = [
     { id: 'projects', label: 'プロジェクト管理', icon: FolderKanban },
-    { id: 'clients', label: '顧客一覧', icon: Users },
+    { id: 'clients', label: '顧客一覧', icon: Contact },
+    { id: 'analysis', label: '分析・統計', icon: TrendingUp },
+    { id: 'team', label: '組織・メンバー', icon: UserCheck },
     { id: 'templates', label: 'ファネルテンプレート', icon: FileCode },
     { id: 'settings', label: 'システム設定', icon: Settings },
   ];

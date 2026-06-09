@@ -1,3 +1,15 @@
+export type UserRole = '管理者' | '開発者' | 'メンバー';
+
+export interface TeamMember {
+  id: string;
+  name: string;
+  email: string;
+  role: UserRole;
+  joinedAt: string;
+  googleConnected: boolean;
+  avatarUrl?: string;
+}
+
 export type FunnelType = 
   | 'セミナー集客ファネル'
   | '個別相談ファネル'

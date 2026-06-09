@@ -1,4 +1,4 @@
-import { Client, Project, Template } from '../types';
+import { Client, Project, Template, TeamMember } from '../types';
 
 export const mockClients: Client[] = [
   {
@@ -198,3 +198,39 @@ export const mockProjects: Project[] = [
     notes: '現在稼働中。登録数250件/月、アップセル転換率18%と好調に推移中。'
   }
 ];
+
+export const mockTeamMembers: TeamMember[] = [
+  {
+    id: 'm1',
+    name: '佐藤 広務',
+    email: 'hiromu.sato@dots-direction.test',
+    role: '管理者',
+    joinedAt: '2025-04-10',
+    googleConnected: true,
+  },
+  {
+    id: 'm2',
+    name: '田中 美咲',
+    email: 'misaki.tanaka@dots-direction.test',
+    role: '開発者',
+    joinedAt: '2025-06-15',
+    googleConnected: true,
+  },
+  {
+    id: 'm3',
+    name: '鈴木 雅治',
+    email: 'masaharu.suzuki@dots-direction.test',
+    role: '開発者',
+    joinedAt: '2025-09-01',
+    googleConnected: true,
+  },
+  {
+    id: 'm4',
+    name: '高橋 健一',
+    email: 'kenichi.takahashi@dots-direction.test',
+    role: 'メンバー',
+    joinedAt: '2026-02-15',
+    googleConnected: false,
+  }
+];
+

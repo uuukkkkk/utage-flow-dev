@@ -1,7 +1,24 @@
 import React, { useState, useEffect } from 'react';
-import { X, Calendar, DollarSign, Edit3, Save, Clock, AlertCircle } from 'lucide-react';
+import { 
+  X, 
+  Calendar, 
+  DollarSign, 
+  Edit3, 
+  Save, 
+  Clock, 
+  AlertCircle,
+  Sparkles,
+  Copy,
+  Check,
+  Mail,
+  Layout,
+  ListTodo,
+  ChevronRight,
+  ArrowRight
+} from 'lucide-react';
 import { motion } from 'motion/react';
-import { Project, ProjectStatus, FunnelStep } from '../types';
+import { Project, ProjectStatus, FunnelStep, TeamMember } from '../types';
+import { mockClients } from '../data/mockData';
 
 interface ProjectDetailModalProps {
   project: Project | null;
@@ -9,6 +26,7 @@ interface ProjectDetailModalProps {
   onClose: () => void;
   onUpdateProject: (updatedProj: Project) => void;
   onDeleteProject: (projectId: string) => void;
+  members: TeamMember[];
 }
 
 export default function ProjectDetailModal({ 
@@ -16,7 +34,8 @@ export default function ProjectDetailModal({
   isOpen, 
   onClose, 
   onUpdateProject,
-  onDeleteProject
+  onDeleteProject,
+  members
 }: ProjectDetailModalProps) {
   const [status, setStatus] = useState<ProjectStatus>('原稿執筆中');
   const [description, setDescription] = useState('');
@@ -24,6 +43,14 @@ export default function ProjectDetailModal({
   const [steps, setSteps] = useState<FunnelStep[]>([]);
   const [targetDate, setTargetDate] = useState('');
   const [isEditingMeta, setIsEditingMeta] = useState(false);
+
+  // Tabs for right panel
+  const [rightPanelTab, setRightPanelTab] = useState<'steps' | 'ai'>('steps');
+  const [selectedStepForAi, setSelectedStepForAi] = useState<string>('');
+  const [aiGeneratedData, setAiGeneratedData] = useState<any | null>(null);
+  const [loadingAi, setLoadingAi] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
+  const [copiedField, setCopiedField] = useState<string | null>(null);
 
   // Load project values when modal opens or shifts
   useEffect(() => {
@@ -34,8 +61,88 @@ export default function ProjectDetailModal({
       setSteps(project.funnelSteps || []);
       setTargetDate(project.targetDate);
       setIsEditingMeta(false);
+      
+      if (project.funnelSteps && project.funnelSteps.length > 0) {
+        setSelectedStepForAi(project.funnelSteps[0].name);
+      } else {
+        setSelectedStepForAi('');
+      }
+      setAiGeneratedData(null);
+      setErrorMessage('');
+      setRightPanelTab('steps');
     }
   }, [project]);
+
+  const handleCopy = (text: string, label: string) => {
+    navigator.clipboard.writeText(text);
+    setCopiedField(label);
+    setTimeout(() => setCopiedField(null), 2000);
+  };
+
+  const handleGenerateAiCopy = async () => {
+    if (!selectedStepForAi) return;
+    setLoadingAi(true);
+    setErrorMessage('');
+    setAiGeneratedData(null);
+
+    const associatedClient = mockClients.find(c => c.id === project.clientId);
+    const clientIndustry = associatedClient ? associatedClient.industry : 'Webサービス・マーケティング';
+
+    try {
+      const response = await fetch('/api/generate-funnel-helper', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          clientName: project.clientName,
+          clientIndustry: clientIndustry,
+          funnelType: project.funnelType,
+          stepName: selectedStepForAi,
+          projectDescription: project.description
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error(`APIエラー: ステータス ${response.status}`);
+      }
+
+      const resData = await response.json();
+      setAiGeneratedData(resData);
+    } catch (err: any) {
+      console.error(err);
+      setErrorMessage(err.message || 'AI原稿生成中に原因不明のエラーが発生しました。');
+    } finally {
+      setLoadingAi(false);
+    }
+  };
+
+  const handleInjectToNotes = () => {
+    if (!aiGeneratedData) return;
+    const injection = `
+=========================================
+【AI生成原稿】ステップ: ${selectedStepForAi}
+-----------------------------------------
+■ キャッチコピー：
+${aiGeneratedData.headlineCopy}
+
+■ サブコピー：
+${aiGeneratedData.subHeadline}
+
+■ ボタン文言：
+${aiGeneratedData.ctaText}
+
+■ メール件名：
+${aiGeneratedData.emailSubject}
+
+■ メール本文：
+${aiGeneratedData.emailBody}
+=========================================
+`;
+    const newNotes = notes ? `${notes}\n${injection}` : injection;
+    setNotes(newNotes);
+    const updatedProj: Project = { ...project, notes: newNotes };
+    onUpdateProject(updatedProj);
+    alert("生成された原稿を、プロジェクトのディレクター申し送りメモ（左側）に自動注入保存しました！");
+  };
 
   if (!isOpen || !project) return null;
 
@@ -107,7 +214,7 @@ export default function ProjectDetailModal({
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
         exit={{ opacity: 0, scale: 0.95 }}
-        className="bg-white rounded-3xl shadow-2xl border border-slate-200 max-w-3xl w-full overflow-hidden flex flex-col max-h-[90vh]"
+        className="bg-white rounded-3xl shadow-2xl border border-slate-200 max-w-5xl w-full overflow-hidden flex flex-col max-h-[90vh]"
       >
         {/* Header */}
         <div className="bg-[#0f172a] text-white px-6 py-5 flex items-center justify-between border-b border-slate-800">
@@ -157,9 +264,9 @@ export default function ProjectDetailModal({
             </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
             {/* Left: General Meta Details */}
-            <div className="md:col-span-2 space-y-5">
+            <div className="lg:col-span-7 space-y-5">
               <div className="flex items-center justify-between">
                 <h4 className="text-xs font-extrabold text-slate-400 uppercase tracking-widest border-l-2 border-indigo-500 pl-2">プロジェクト詳細・スコープ</h4>
                 <button
@@ -269,101 +376,315 @@ export default function ProjectDetailModal({
               )}
             </div>
 
-            {/* Right Side: Step-by-step detail pipeline for UTAGE */}
-            <div className="bg-slate-50 p-5 rounded-2xl border border-slate-205 flex flex-col">
-              <div className="flex items-center justify-between mb-3 border-b border-slate-200 pb-2">
-                <h4 className="text-xs font-black text-slate-800 uppercase tracking-widest">
-                  UTAGEページ毎の進捗状況と担当・期日
-                </h4>
-                <span className="text-[10px] bg-indigo-100 text-indigo-800 px-2.5 py-0.5 rounded-full font-bold">
-                  {steps.filter(s => s.status === '完了').length} / {steps.length} 完了
-                </span>
-              </div>
-              
-              <div className="space-y-4 flex-1 max-h-[460px] overflow-y-auto pr-1">
-                {steps.map((step) => {
-                  return (
-                    <div key={step.id} className="bg-white p-4 rounded-xl border border-slate-200/70 shadow-2xs space-y-3 hover:border-slate-350 transition-colors">
-                      <div className="flex items-start justify-between gap-2">
-                        <div className="flex-1">
-                          <span className="text-xs font-black text-slate-800 leading-tight">
-                            {step.name}
-                          </span>
-                        </div>
-                        <span className={`px-2 py-0.5 rounded-md text-[10px] font-extrabold border shrink-0 ${getStepStatusClasses(step.status)}`}>
-                          {step.status}
-                        </span>
-                      </div>
+            {/* Right Side Column with Tabs */}
+            <div className="lg:col-span-5 bg-slate-50 p-5 rounded-2xl border border-slate-205 flex flex-col justify-between min-h-[500px]">
+              <div>
+                {/* Sleek Tab Toggles at top */}
+                <div className="flex bg-slate-200/60 p-1 rounded-xl gap-1 mb-4 select-none border border-slate-200">
+                  <button
+                    type="button"
+                    onClick={() => setRightPanelTab('steps')}
+                    className={`flex-1 py-1.5 rounded-lg text-xs font-black transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
+                      rightPanelTab === 'steps'
+                        ? 'bg-white text-slate-800 shadow-xs'
+                        : 'text-slate-500 hover:text-slate-800'
+                    }`}
+                  >
+                    <ListTodo className="h-4 w-4 text-indigo-500" />
+                    <span>タスク・進捗状況</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setRightPanelTab('ai')}
+                    className={`flex-1 py-1.5 rounded-lg text-xs font-black transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
+                      rightPanelTab === 'ai'
+                        ? 'bg-white text-slate-800 shadow-xs'
+                        : 'text-slate-500 hover:text-slate-800'
+                    }`}
+                  >
+                    <Sparkles className="h-4 w-4 text-emerald-500 animate-pulse" />
+                    <span>AI原稿・構成アシスト</span>
+                  </button>
+                </div>
 
-                      {/* Display / Input fields for Assignee and Due Date */}
-                      <div className="grid grid-cols-2 gap-2 text-[11px] pt-1 border-t border-slate-100">
-                        <div>
-                          <label className="block text-[8px] text-slate-400 font-bold uppercase tracking-wider mb-0.5">
-                            担当者
-                          </label>
-                          <input
-                            type="text"
-                            value={step.assignee || ''}
-                            onChange={(e) => {
-                              const updatedSteps = steps.map(s => 
-                                s.id === step.id ? { ...s, assignee: e.target.value } : s
-                              );
-                              setSteps(updatedSteps);
-                              const updatedProj: Project = { ...project, funnelSteps: updatedSteps };
-                              onUpdateProject(updatedProj);
-                            }}
-                            placeholder="担当者名..."
-                            className="w-full text-xs font-bold text-slate-700 bg-slate-50 border border-slate-200 rounded-md px-1.5 py-1 focus:bg-white focus:outline-hidden"
-                          />
-                        </div>
+                {rightPanelTab === 'steps' ? (
+                  /* ================= STEPS VIEW ================= */
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between pb-1 border-b border-slate-200">
+                      <span className="text-[10px] text-slate-400 font-extrabold uppercase tracking-widest">
+                        UTAGEページ進捗 & 担当管理
+                      </span>
+                      <span className="text-[10px] bg-indigo-100 text-indigo-800 px-2.5 py-0.5 rounded-full font-black">
+                        {steps.filter(s => s.status === '完了').length} / {steps.length} 完了
+                      </span>
+                    </div>
 
-                        <div>
-                          <label className="block text-[8px] text-slate-400 font-bold uppercase tracking-wider mb-0.5">
-                            作業期日
-                          </label>
-                          <input
-                            type="text"
-                            value={step.targetDate || ''}
-                            onChange={(e) => {
-                              const updatedSteps = steps.map(s => 
-                                s.id === step.id ? { ...s, targetDate: e.target.value } : s
-                              );
-                              setSteps(updatedSteps);
-                              const updatedProj: Project = { ...project, funnelSteps: updatedSteps };
-                              onUpdateProject(updatedProj);
-                            }}
-                            placeholder="例: 6月20日"
-                            className="w-full text-xs font-bold text-slate-700 bg-slate-50 border border-slate-200 rounded-md px-1.5 py-1 focus:bg-white focus:outline-hidden"
-                          />
+                    <div className="space-y-3 max-h-[400px] overflow-y-auto pr-1">
+                      {steps.map((step) => (
+                        <div key={step.id} className="bg-white p-4 rounded-xl border border-slate-200/70 shadow-2xs space-y-3 hover:border-slate-350 transition-colors">
+                          <div className="flex items-start justify-between gap-1.5">
+                            <span className="text-xs font-black text-slate-855 leading-snug">
+                              {step.name}
+                            </span>
+                            <span className={`px-2 py-0.5 rounded-md text-[9px] font-extrabold border shrink-0 ${getStepStatusClasses(step.status)}`}>
+                              {step.status}
+                            </span>
+                          </div>
+
+                          <div className="grid grid-cols-2 gap-2 text-[10px] pt-1.5 border-t border-slate-100">
+                            <div>
+                              <span className="block text-[8px] text-slate-400 font-bold uppercase mb-0.5">担当者</span>
+                              <select
+                                value={step.assignee || ''}
+                                onChange={(e) => {
+                                  const updatedSteps = steps.map(s => 
+                                    s.id === step.id ? { ...s, assignee: e.target.value } : s
+                                  );
+                                  setSteps(updatedSteps);
+                                  const updatedProj: Project = { ...project, funnelSteps: updatedSteps };
+                                  onUpdateProject(updatedProj);
+                                }}
+                                className="w-full text-xs font-bold text-slate-750 bg-slate-50 border border-slate-200 rounded-md px-1 py-1 focus:bg-white focus:outline-hidden"
+                              >
+                                <option value="">未設定</option>
+                                {members.map(m => (
+                                  <option key={m.id} value={m.name}>{m.name} ({m.role})</option>
+                                ))}
+                                {step.assignee && !members.some(m => m.name === step.assignee) && (
+                                  <option value={step.assignee}>{step.assignee}</option>
+                                )}
+                              </select>
+                            </div>
+
+                            <div>
+                              <span className="block text-[8px] text-slate-400 font-bold uppercase mb-0.5">作業期日</span>
+                              <input
+                                type="text"
+                                value={step.targetDate || ''}
+                                onChange={(e) => {
+                                  const updatedSteps = steps.map(s => 
+                                    s.id === step.id ? { ...s, targetDate: e.target.value } : s
+                                  );
+                                  setSteps(updatedSteps);
+                                  const updatedProj: Project = { ...project, funnelSteps: updatedSteps };
+                                  onUpdateProject(updatedProj);
+                                }}
+                                placeholder="例: 6月20日"
+                                className="w-full text-xs font-bold text-slate-750 bg-slate-50 border border-slate-200 rounded-md px-1.5 py-1 focus:bg-white focus:outline-hidden"
+                              />
+                            </div>
+                          </div>
+
+                          <div className="flex items-center justify-between pt-1.5 border-t border-slate-100">
+                            <span className="text-[9px] text-slate-400 font-bold">ステータス:</span>
+                            <div className="flex space-x-1 select-none">
+                              {(['未着手', '制作中', '確認中', '完了'] as const).map((st) => (
+                                <button
+                                  key={st}
+                                  type="button"
+                                  onClick={() => handleStepStatusChange(step.id, st)}
+                                  className={`px-1.5 py-0.5 rounded text-[9px] font-extrabold border transition-all cursor-pointer ${
+                                    step.status === st 
+                                      ? 'bg-indigo-600 text-white border-indigo-600 shadow-3xs' 
+                                      : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-150'
+                                  }`}
+                                >
+                                  {st}
+                                </button>
+                              ))}
+                            </div>
+                          </div>
                         </div>
-                      </div>
-                      
-                      <div className="flex items-center justify-between pt-1 border-t border-slate-100">
-                        <span className="text-[9px] text-slate-400 font-bold">ステータス切替:</span>
-                        <div className="flex space-x-1 select-none">
-                          {(['未着手', '制作中', '確認中', '完了'] as const).map((st) => (
-                            <button
-                              key={st}
-                              type="button"
-                              onClick={() => handleStepStatusChange(step.id, st)}
-                              className={`px-1.5 py-0.5 rounded-md text-[9px] font-extrabold border transition-all cursor-pointer ${
-                                step.status === st 
-                                  ? 'bg-indigo-600 text-white border-indigo-600 shadow-3xs' 
-                                  : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-150'
-                              }`}
-                            >
-                              {st}
-                            </button>
-                          ))}
-                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ) : (
+                  /* ================= AI ASSISTANT VIEW ================= */
+                  <div className="space-y-4">
+                    <div className="flex items-center gap-1.5 border-b border-emerald-100 pb-2">
+                      <Sparkles className="h-4.5 w-4.5 text-emerald-500" />
+                      <div>
+                        <h4 className="text-xs font-black text-slate-800">
+                          AI原稿ライティング & 構成ブロック生成
+                        </h4>
+                        <p className="text-[10px] text-slate-400 mt-0.5 font-bold">Gemini 3.5 を活用して、選択中ステップの高成約原稿＆設定を生成</p>
                       </div>
                     </div>
-                  );
-                })}
+
+                    <div className="space-y-3">
+                      <div>
+                        <label className="block text-[9px] text-slate-400 font-black uppercase tracking-wider mb-1">
+                          ライティング対象のファネルステップを選択
+                        </label>
+                        <select
+                          value={selectedStepForAi}
+                          onChange={(e) => setSelectedStepForAi(e.target.value)}
+                          className="w-full text-xs font-bold text-slate-805 bg-white border border-slate-205 rounded-xl px-3 py-2.5 focus:outline-hidden focus:ring-1 focus:ring-indigo-500"
+                        >
+                          {steps.map((st) => (
+                            <option key={st.id} value={st.name}>{st.name}</option>
+                          ))}
+                        </select>
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={handleGenerateAiCopy}
+                        disabled={loadingAi || !selectedStepForAi}
+                        className="w-full bg-gradient-to-r from-emerald-500 to-indigo-600 hover:opacity-95 text-white py-2.5 rounded-xl text-xs font-black flex items-center justify-center gap-2 transition-all cursor-pointer shadow-md disabled:opacity-50"
+                      >
+                        {loadingAi ? (
+                          <>
+                            <svg className="animate-spin h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
+                              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                            </svg>
+                            <span>構成・コピー案を生成中... (約3秒)</span>
+                          </>
+                        ) : (
+                          <>
+                            <Sparkles className="h-4.5 w-4.5" />
+                            <span>AIコピー＆構成案を生成する</span>
+                          </>
+                        )}
+                      </button>
+
+                      {errorMessage && (
+                        <div className="p-3 bg-rose-50 border border-rose-200 text-rose-800 rounded-xl text-xs font-medium flex items-center gap-2">
+                          <AlertCircle className="h-4 w-4 text-rose-600 shrink-0" />
+                          <span>{errorMessage}</span>
+                        </div>
+                      )}
+
+                      {/* Generated result rendering */}
+                      {aiGeneratedData && (
+                        <div className="space-y-4 max-h-[340px] overflow-y-auto pr-1 pt-1">
+                          {/* JPY Headline Hook Copy */}
+                          <div className="bg-white p-3.5 rounded-xl border border-slate-200 shadow-3xs relative group text-left">
+                            <span className="text-[8px] bg-indigo-50 text-indigo-600 font-extrabold px-1.5 py-0.5 rounded uppercase tracking-wider">最強キャッチコピー (案)</span>
+                            <button
+                              type="button"
+                              onClick={() => handleCopy(aiGeneratedData.headlineCopy, 'headline')}
+                              className="absolute top-3 right-3 text-slate-400 hover:text-slate-700 transition cursor-pointer"
+                              title="コピー"
+                            >
+                              {copiedField === 'headline' ? (
+                                <Check className="h-3.5 w-3.5 text-emerald-500 font-extrabold" />
+                              ) : (
+                                <Copy className="h-3.5 w-3.5" />
+                              )}
+                            </button>
+                            <p className="text-xs font-black text-slate-800 mt-2 leading-relaxed whitespace-pre-wrap">
+                              {aiGeneratedData.headlineCopy}
+                            </p>
+                          </div>
+
+                          {/* Sub Headline */}
+                          <div className="bg-white p-3.5 rounded-xl border border-slate-200 shadow-3xs relative group text-left">
+                            <span className="text-[8px] bg-slate-100 text-slate-500 font-extrabold px-1.5 py-0.5 rounded uppercase tracking-wider">サブベネフィット/説明文</span>
+                            <button
+                              type="button"
+                              onClick={() => handleCopy(aiGeneratedData.subHeadline, 'subheadline')}
+                              className="absolute top-3 right-3 text-slate-400 hover:text-slate-700 transition cursor-pointer"
+                            >
+                              {copiedField === 'subheadline' ? <Check className="h-3.5 w-3.5 text-emerald-500" /> : <Copy className="h-3.5 w-3.5" />}
+                            </button>
+                            <p className="text-[11px] font-medium text-slate-600 mt-2 leading-relaxed">
+                              {aiGeneratedData.subHeadline}
+                            </p>
+                          </div>
+
+                          {/* CTA conversion button preview */}
+                          <div className="bg-white p-3.5 rounded-xl border border-slate-200 text-left">
+                            <span className="text-[8px] text-slate-400 font-extrabold block mb-2">おすすめボタンCTA誘導 (成約率重視)</span>
+                            <div className="bg-emerald-50 border border-dashed border-emerald-250 p-2 text-center rounded-xl font-black text-xs text-emerald-800 flex items-center justify-between">
+                              <span className="truncate">&gt;&gt; {aiGeneratedData.ctaText}</span>
+                              <button
+                                type="button"
+                                onClick={() => handleCopy(aiGeneratedData.ctaText, 'cta')}
+                                className="bg-white border border-emerald-300 p-1 rounded hover:bg-emerald-100 transition shrink-0 cursor-pointer"
+                              >
+                                {copiedField === 'cta' ? <Check className="h-3 w-3 text-emerald-600" /> : <Copy className="h-3 w-3 text-slate-500" />}
+                              </button>
+                            </div>
+                          </div>
+
+                          {/* Key compulsion hooks */}
+                          {aiGeneratedData.keyFeatures && aiGeneratedData.keyFeatures.length > 0 && (
+                            <div className="space-y-1.5 text-left">
+                              <span className="text-[8px] text-slate-400 font-extrabold block">ステップ要素のコア訴求3選</span>
+                              <div className="grid grid-cols-1 gap-1.5">
+                                {aiGeneratedData.keyFeatures.map((kf: string, idx: number) => (
+                                  <div key={idx} className="bg-slate-50 border border-slate-200/80 p-2.5 rounded-lg flex items-start gap-1.5 text-[10px] font-bold text-slate-700">
+                                    <span className="w-4 h-4 bg-emerald-500 text-white rounded-full flex items-center justify-center shrink-0 font-mono text-[9px] mt-0.5">{idx + 1}</span>
+                                    <span className="leading-relaxed">{kf}</span>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Layout recommendation blocks */}
+                          <div className="bg-slate-950 text-slate-350 p-3.5 rounded-xl border border-slate-800 relative text-left">
+                            <span className="text-[8px] bg-slate-800 text-slate-400 font-extrabold px-1.5 py-0.5 rounded uppercase tracking-wider flex items-center gap-1">
+                              <Layout className="h-3 w-3 text-indigo-400" />
+                              UTAGE要素＆カラーのレイアウト推奨
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => handleCopy(aiGeneratedData.layoutRecomendations, 'layout')}
+                              className="absolute top-3 right-3 text-slate-500 hover:text-white transition cursor-pointer"
+                            >
+                              {copiedField === 'layout' ? <Check className="h-3.5 w-3.5 text-emerald-500" /> : <Copy className="h-3.5 w-3.5" />}
+                            </button>
+                            <p className="text-[10px] text-slate-300 font-mono mt-2 leading-relaxed whitespace-pre-wrap">
+                              {aiGeneratedData.layoutRecomendations}
+                            </p>
+                          </div>
+
+                          {/* Follow up Autoresponder email */}
+                          <div className="bg-slate-900 text-slate-200 p-4 rounded-xl border border-slate-800 space-y-2 relative text-left">
+                            <div className="flex items-center justify-between border-b border-slate-800 pb-1.5">
+                              <span className="text-[8px] text-indigo-400 font-black uppercase tracking-wider flex items-center gap-1">
+                                <Mail className="h-3 w-3 text-indigo-400" />
+                                登録直後・自動返信メール下書き
+                              </span>
+                              <button
+                                type="button"
+                                onClick={() => handleCopy(`件名: ${aiGeneratedData.emailSubject}\n\n${aiGeneratedData.emailBody}`, 'email')}
+                                className="text-slate-400 hover:text-white cursor-pointer"
+                              >
+                                {copiedField === 'email' ? <Check className="h-3.5 w-3.5 text-emerald-500" /> : <Copy className="h-3.5 w-3.5" />}
+                              </button>
+                            </div>
+                            <div className="text-[10px] font-mono space-y-1.5">
+                              <p className="font-extrabold text-teal-400">件名: {aiGeneratedData.emailSubject}</p>
+                              <div className="border-t border-slate-800 pt-1.5 max-h-[140px] overflow-y-auto pr-1 text-slate-400 whitespace-pre-wrap leading-relaxed select-text font-sans text-[10px]">
+                                {aiGeneratedData.emailBody}
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Quick injection action */}
+                          <button
+                            type="button"
+                            onClick={handleInjectToNotes}
+                            className="w-full text-center bg-indigo-50 hover:bg-slate-100 text-indigo-700 border border-indigo-200 rounded-xl text-xs font-black py-2.5 transition cursor-pointer"
+                          >
+                            📝 生成された原稿を開発メモ（申し送り）に注入保存する
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
               </div>
 
               <div className="mt-4 pt-3 border-t border-slate-200/80 text-center text-[10px] text-slate-400">
-                ※ 担当者・期日・各ステータスはリアルタイムで保存され、全体の進捗率（％）へ即座に連動反映されます。
+                {rightPanelTab === 'steps' 
+                  ? "※ 各ステータスはリアルタイムで保存され、全体の進捗率へ即座に連動反映されます。" 
+                  : "※ AIコピーはUTAGEに直接貼り付け、または左メモ欄に注入して再編成が可能です。"
+                }
               </div>
             </div>
           </div>
