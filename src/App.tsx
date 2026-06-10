@@ -68,7 +68,7 @@ export default function App() {
   // Modal Control States
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [selectedDetailedProject, setSelectedDetailedProject] = useState<Project | null>(null);
-  const [selectedProjectIdForView, setSelectedProjectIdForView] = useState<string | null>(mockProjects[0]?.id || null);
+  const [selectedProjectIdForView, setSelectedProjectIdForView] = useState<string | null>(null);
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
 
   // Add project handler

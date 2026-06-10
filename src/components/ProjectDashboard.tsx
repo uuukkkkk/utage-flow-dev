@@ -26,6 +26,7 @@ import {
   Database,
   ArrowLeft,
   ArrowRight,
+  List,
   Settings,
   Shield,
   HelpCircle,
@@ -57,8 +58,8 @@ export default function ProjectDashboard({
   const [selectedFunnel, setSelectedFunnel] = useState<string>('all');
   const [selectedStatus, setSelectedStatus] = useState<string>('all');
   
-  // Dashboard view toggle: 'grid' (traditional bento) or 'kanban'
-  const [viewMode, setViewMode] = useState<'grid' | 'kanban'>('grid');
+  // Dashboard view toggle: 'grid' (traditional bento), 'kanban', or 'list'
+  const [viewMode, setViewMode] = useState<'grid' | 'kanban' | 'list'>('grid');
 
   // Tab selection: 'projects' | 'logs'
   const [dashboardTab, setDashboardTab] = useState<'projects' | 'logs'>('projects');
@@ -465,8 +466,8 @@ export default function ProjectDashboard({
             </select>
           </div>
 
-          {/* Status filtering (only visible/applied in Grid Mode to keep boards clean) */}
-          {viewMode === 'grid' && (
+          {/* Status filtering (only visible/applied in Grid or List Mode to keep boards clean) */}
+          {(viewMode === 'grid' || viewMode === 'list') && (
             <div>
               <select
                 value={selectedStatus}
@@ -504,7 +505,18 @@ export default function ProjectDashboard({
             }`}
           >
             <Kanban className="h-4 w-4 text-emerald-500" />
-            <span>カンバン (Drag & Drop)</span>
+            <span>カンバン</span>
+          </button>
+          <button
+            onClick={() => setViewMode('list')}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-black transition-all cursor-pointer ${
+              viewMode === 'list' 
+                ? 'bg-white text-indigo-750 shadow-xs' 
+                : 'text-slate-500 hover:text-slate-800'
+            }`}
+          >
+            <List className="h-4 w-4 text-indigo-500" />
+            <span>総合進捗一覧</span>
           </button>
         </div>
       </div>
@@ -666,7 +678,7 @@ export default function ProjectDashboard({
             </div>
           )}
         </div>
-      ) : (
+      ) : viewMode === 'kanban' ? (
         /* ================= KANBAN BOARD VIEW (DRAG & DROP) ================= */
         <div className="overflow-x-auto pb-4 -mx-4 px-4 sm:mx-0 sm:px-0">
           <div className="flex gap-4 min-w-[1100px] items-stretch">
@@ -791,6 +803,138 @@ export default function ProjectDashboard({
               );
             })}
           </div>
+        </div>
+      ) : (
+        /* ================= LIST VIEW (総合進捗一覧 - HIGH DENSITY TABLE) ================= */
+        <div className="bg-white rounded-3xl border border-slate-200 overflow-hidden shadow-[0_4px_24px_-4px_rgba(0,0,0,0.03),0_1px_3px_rgba(0,0,0,0.02)]">
+          {/* Informative UTAGE MCP Header */}
+          <div className="bg-gradient-to-r from-slate-900 to-indigo-950 p-5 px-6 text-white border-b border-indigo-950/40 flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div className="space-y-1">
+              <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md bg-indigo-500/20 text-indigo-300 text-[10px] font-black border border-indigo-500/30">
+                <Globe className="h-3 w-3 text-indigo-300" />
+                <span>UTAGEシステム構築 MCP認定仕様</span>
+              </div>
+              <h3 className="text-sm font-black tracking-tight">UTAGE Flow 連携：総合構築進捗ダッシュボード</h3>
+            </div>
+            <a 
+              href="https://docs.utage-system.com/introduction" 
+              target="_blank" 
+              referrerPolicy="no-referrer"
+              className="text-xs font-black shrink-0 text-indigo-300 hover:text-white flex items-center gap-1.5 transition-colors bg-white/5 hover:bg-white/10 px-3 py-1.5 rounded-lg border border-white/10"
+            >
+              <span>📖 UTAGE公式MCP構築ガイドを開く</span>
+              <ChevronRight className="h-3 w-3" />
+            </a>
+          </div>
+
+          <div className="overflow-x-auto">
+            <table className="w-full text-left border-collapse">
+              <thead>
+                <tr className="bg-slate-50 border-b border-slate-200 text-slate-500 text-[11px] font-black uppercase tracking-wider">
+                  <th className="py-4.5 px-6">顧客名（クライアント様）</th>
+                  <th className="py-4.5 px-3">対象ファネルモデル</th>
+                  <th className="py-4.5 px-3">総合構築進捗 (平均経過)</th>
+                  <th className="py-4.5 px-3">全タスク状態</th>
+                  <th className="py-4.5 px-3">現在のフェーズ</th>
+                  <th className="py-4.5 px-3">目標期日</th>
+                  <th className="py-4.5 px-6 text-right">作業管理</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {filteredProjects.map((project) => {
+                  const completedStepsCount = project.funnelSteps?.filter(s => s.status === '完了').length || 0;
+                  const totalStepsCount = project.funnelSteps?.length || 0;
+                  
+                  return (
+                    <tr 
+                      key={project.id}
+                      className="hover:bg-slate-50/40 transition-colors text-xs font-semibold text-slate-700"
+                    >
+                      <td className="py-4.5 px-6">
+                        <div>
+                          <p onClick={() => onOpenDetailModal(project)} className="font-black text-slate-900 text-sm hover:text-indigo-650 transition-colors cursor-pointer">{project.clientName}</p>
+                          <p className="text-[10px] text-slate-400 font-medium line-clamp-1 mt-0.5">{project.description}</p>
+                        </div>
+                      </td>
+                      <td className="py-4.5 px-3">
+                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-slate-100 text-slate-700 border border-slate-200/60 text-[10px] font-black">
+                          <Layers className="h-3 w-3 text-slate-500" />
+                          {project.funnelType}
+                        </span>
+                      </td>
+                      <td className="py-4.5 px-3">
+                        <div className="space-y-1.5 max-w-[160px]">
+                          <div className="flex justify-between items-center text-[10px]">
+                            <span className="font-mono font-black text-slate-800">{project.progress}%</span>
+                          </div>
+                          <div className="w-full h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                            <div 
+                              className={`h-full rounded-full transition-all duration-500 ${
+                                project.progress === 100 
+                                  ? 'bg-emerald-500' 
+                                  : 'bg-indigo-600'
+                              }`} 
+                              style={{ width: `${project.progress}%` }}
+                            />
+                          </div>
+                        </div>
+                      </td>
+                      <td className="py-4.5 px-3">
+                        <span className="text-[11px] font-bold text-slate-500">
+                          {completedStepsCount} / {totalStepsCount} ステップ完了
+                        </span>
+                      </td>
+                      <td className="py-4.5 px-3">
+                        <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[10px] font-black ${
+                          project.status === '本番稼働中'
+                            ? 'bg-emerald-50 text-emerald-700 border border-emerald-100'
+                            : project.status === 'テスト運用中'
+                            ? 'bg-teal-50 text-teal-700 border border-teal-100'
+                            : project.status === 'UTAGE実装中'
+                            ? 'bg-indigo-50 text-indigo-700 border border-indigo-100'
+                            : project.status === 'クライアント確認中'
+                            ? 'bg-amber-50 text-amber-700 border border-amber-100'
+                            : 'bg-slate-55/60 text-slate-600 border border-slate-200'
+                        }`}>
+                          <span className={`w-1.5 h-1.5 rounded-full ${
+                            project.status === '本番稼働中' ? 'bg-emerald-500' :
+                            project.status === 'テスト運用中' ? 'bg-teal-500' :
+                            project.status === 'UTAGE実装中' ? 'bg-indigo-500' :
+                            project.status === 'クライアント確認中' ? 'bg-amber-500' : 'bg-slate-400'
+                          }`} />
+                          {project.status}
+                        </span>
+                      </td>
+                      <td className="py-4.5 px-3 font-mono text-slate-500 text-[11px]">
+                        {project.targetDate}
+                      </td>
+                      <td className="py-4.5 px-6 text-right">
+                        <button
+                          type="button"
+                          onClick={() => onOpenDetailModal(project)}
+                          className="px-3.5 py-1.5 bg-slate-50 hover:bg-indigo-50 text-indigo-600 hover:text-indigo-700 rounded-xl text-xs font-black transition-all cursor-pointer border border-slate-200 hover:border-indigo-200 shadow-2xs"
+                        >
+                          詳細ワークスペース
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+
+          {filteredProjects.length === 0 && (
+            <div className="py-16 text-center bg-white rounded-3xl border border-slate-200 flex flex-col items-center justify-center space-y-4">
+              <div className="p-3 bg-slate-50 rounded-full text-slate-400">
+                <Search className="h-6 w-6" />
+              </div>
+              <div>
+                <p className="text-slate-800 font-bold text-sm">該当するプロジェクトが見つかりません</p>
+                <p className="text-slate-400 text-xs mt-1">絞り込み条件を緩和してください。</p>
+              </div>
+            </div>
+          )}
         </div>
       )}
         </>

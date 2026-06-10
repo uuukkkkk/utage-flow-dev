@@ -11,7 +11,9 @@ import {
   AlertCircle,
   Briefcase,
   ChevronRight,
-  Sparkles
+  Sparkles,
+  Layers,
+  Workflow
 } from 'lucide-react';
 import { 
   ResponsiveContainer, 
@@ -40,6 +42,7 @@ interface AnalysisViewProps {
 
 export default function AnalysisView({ projects, clients }: AnalysisViewProps) {
   const [filterFunnelType, setFilterFunnelType] = useState<string>('all');
+  const [viewTab, setViewTab] = useState<'charts' | 'gantt'>('charts');
 
   // Helpers to parse currency strings (e.g. "450,050円" or "¥600,000") to numeric values
   const parseRevenue = (revStr: string | undefined): number => {
@@ -228,8 +231,38 @@ export default function AnalysisView({ projects, clients }: AnalysisViewProps) {
         </div>
       </div>
 
-      {/* Grid of Bento-style stats */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      {/* View Mode Switching Tabs */}
+      <div className="flex bg-slate-150/60 p-1.5 rounded-2xl border border-slate-200/80 max-w-lg gap-1">
+        <button
+          type="button"
+          onClick={() => setViewTab('charts')}
+          className={`flex-1 py-2.5 px-4 rounded-xl text-xs font-black transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
+            viewTab === 'charts'
+              ? 'bg-[#0f172a] text-white shadow-md'
+              : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/50'
+          }`}
+        >
+          <BarChart2 className="w-4 h-4 text-indigo-400" />
+          <span>📊 チャート分析・統計</span>
+        </button>
+        <button
+          type="button"
+          onClick={() => setViewTab('gantt')}
+          className={`flex-1 py-2.5 px-4 rounded-xl text-xs font-black transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
+            viewTab === 'gantt'
+              ? 'bg-[#0f172a] text-white shadow-md'
+              : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/50'
+          }`}
+        >
+          <Workflow className="w-4 h-4 text-violet-400" />
+          <span>📅 総合進捗＆ガント進行度</span>
+        </button>
+      </div>
+
+      {viewTab === 'charts' ? (
+        <>
+          {/* Grid of Bento-style stats */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {/* KPI 1 */}
         <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200/80 shadow-xs flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-4 min-w-0">
           <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-xl bg-indigo-50 flex items-center justify-center text-indigo-600 shrink-0">
@@ -466,6 +499,110 @@ export default function AnalysisView({ projects, clients }: AnalysisViewProps) {
         </div>
 
       </div>
+        </>
+      ) : (
+        /* Gantt chart and Progress List representation view */
+        <div className="bg-white rounded-3xl border border-slate-200 overflow-hidden shadow-[0_4px_24px_-4px_rgba(0,0,0,0.03),0_1px_3px_rgba(0,0,0,0.02)]">
+          <div className="bg-gradient-to-r from-slate-900 to-indigo-950 p-5 px-6 text-white border-b border-indigo-950/40 flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div className="space-y-1">
+              <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md bg-indigo-500/20 text-indigo-300 text-[10px] font-black border border-indigo-500/30">
+                <span className="w-1.5 h-1.5 rounded-full bg-indigo-400 animate-pulse" />
+                <span>UTAGE Flow認定：進捗・ロードマップ監視</span>
+              </div>
+              <h3 className="text-sm font-black tracking-tight text-white m-0">総合構築進捗 ＆ ガントチャート進行度マップ</h3>
+            </div>
+            <div className="flex flex-wrap items-center gap-4 text-[10px] font-black">
+              <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded bg-emerald-500 border border-emerald-600/30" />完了</span>
+              <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded bg-amber-500 border border-amber-600/30" />確認中</span>
+              <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded bg-indigo-605 bg-indigo-600 border border-indigo-700/30" />制作中</span>
+              <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded bg-white border border-slate-300" />未着手</span>
+            </div>
+          </div>
+
+          <div className="p-6 space-y-6">
+            {filteredProjects.map((proj) => {
+              const completedSteps = proj.funnelSteps?.filter(s => s.status === '完了').length || 0;
+              const totalSteps = proj.funnelSteps?.length || 0;
+              return (
+                <div key={proj.id} className="p-5 rounded-2xl border border-slate-200 bg-slate-50/20 hover:bg-slate-50/50 transition-all space-y-4">
+                  {/* Name / Info row */}
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-100 pb-3">
+                    <div className="space-y-1">
+                      <p className="font-black text-sm text-slate-900">{proj.clientName}</p>
+                      <div className="flex flex-wrap items-center gap-2 text-[10px] text-slate-500 font-bold">
+                        <span className="px-2 py-0.5 rounded bg-slate-100/80 font-black border border-slate-200 text-slate-600">{proj.funnelType}</span>
+                        <span>•</span>
+                        <span>目標期日: <strong>{proj.targetDate}</strong></span>
+                        <span>•</span>
+                        <span>契約要件規模: <strong>{proj.revenue}</strong></span>
+                      </div>
+                    </div>
+
+                    {/* Progress slider */}
+                    <div className="flex items-center gap-3 shrink-0">
+                      <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded text-[9px] font-black ${
+                        proj.status === '本番稼働中' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200/55' :
+                        proj.status === 'テスト運用中' ? 'bg-teal-50 text-teal-700 border border-teal-200/55' :
+                        proj.status === 'UTAGE実装中' ? 'bg-indigo-50 text-indigo-700 border border-indigo-200/55' : 'bg-slate-100 text-slate-650 border border-slate-200'
+                      }`}>
+                        <span className={`w-1.5 h-1.5 rounded-full ${
+                          proj.status === '本番稼働中' ? 'bg-emerald-500' :
+                          proj.status === 'テスト運用中' ? 'bg-teal-500' :
+                          proj.status === 'UTAGE実装中' ? 'bg-indigo-500' : 'bg-slate-400'
+                        }`} />
+                        {proj.status}
+                      </span>
+                      <div className="text-right">
+                        <span className="text-xs font-black font-mono text-slate-850 block">{proj.progress}%</span>
+                        <span className="text-[10px] text-slate-400 block font-bold">{completedSteps}/{totalSteps} ステップ完了</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Horizontal Gantt Blocks for funnel steps */}
+                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3">
+                    {proj.funnelSteps?.map((step) => {
+                      const isComplete = step.status === '完了';
+                      const isReview = step.status === '確認中';
+                      const isProgress = step.status === '制作中';
+                      const statusBg = 
+                        isComplete ? 'bg-emerald-500 text-white border-emerald-600 shadow-xs' :
+                        isReview ? 'bg-amber-500 text-white border-amber-600 shadow-xs' :
+                        isProgress ? 'bg-indigo-600 text-white border-indigo-700 shadow-xs' : 'bg-white text-slate-600 border-slate-200/80 hover:bg-slate-50';
+                      return (
+                        <div 
+                          key={step.id} 
+                          className={`p-3 rounded-xl border flex flex-col justify-between min-h-[84px] transition-all hover:scale-[1.02] ${statusBg}`}
+                        >
+                          <div>
+                            <p className="text-[10px] font-black leading-snug line-clamp-2" title={step.name}>
+                              {step.name}
+                            </p>
+                          </div>
+                          <div className={`flex items-center justify-between mt-3 pt-1.5 border-t text-[8px] font-black ${
+                            isComplete || isReview || isProgress ? 'border-white/20 opacity-90' : 'border-slate-100 text-slate-400'
+                          }`}>
+                            <span className="truncate max-w-[50px]" title={step.assignee}>{step.assignee || '未設定'}</span>
+                            <span className="shrink-0">{step.targetDate || '未設定'}</span>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            })}
+
+            {filteredProjects.length === 0 && (
+              <div className="py-20 text-center flex flex-col items-center justify-center space-y-3">
+                <AlertCircle className="h-8 w-8 text-slate-300 animate-pulse" />
+                <p className="text-sm font-black text-slate-800">一致するプロジェクトは見当たりません</p>
+                <p className="text-xs text-slate-400">フィルターのファネル構造条件を緩和してください。</p>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

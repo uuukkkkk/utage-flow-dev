@@ -27,10 +27,84 @@ import {
   Briefcase,
   Layers,
   ArrowLeftRight,
-  CheckCircle2
+  CheckCircle2,
+  AlertTriangle,
+  Flame,
+  Bell
 } from 'lucide-react';
 import { motion } from 'motion/react';
 import { Project, ProjectStatus, FunnelStep, TeamMember, ProjectHistoryLog } from '../types';
+
+// Helper to determine task deadline alerts and countdown values relative to fixed date 2026-06-10
+export function parseDeadlineStatus(targetDateStr?: string, status?: string) {
+  if (!targetDateStr || status === '完了') {
+    return { isOverdue: false, isNear: false, isToday: false, daysRemaining: 999, label: '' };
+  }
+
+  // Active sync context date: 2026-06-10
+  const today = new Date('2026-06-10T00:00:00');
+  let dateObj: Date | null = null;
+  const cleanStr = targetDateStr.trim();
+
+  // Parse YYYY-MM-DD
+  const yyyymmdd = cleanStr.match(/^(\d{4})[-/](\d{1,2})[-/](\d{1,2})$/);
+  if (yyyymmdd) {
+    dateObj = new Date(parseInt(yyyymmdd[1]), parseInt(yyyymmdd[2]) - 1, parseInt(yyyymmdd[3]));
+  } else {
+    // Parse MM/DD or MM-DD (assume current year is 2026)
+    const mmdd = cleanStr.match(/^(\d{1,2})[-/](\d{1,2})$/);
+    if (mmdd) {
+      dateObj = new Date(2026, parseInt(mmdd[1]) - 1, parseInt(mmdd[2]));
+    } else {
+      // Parse M月D日
+      const jpd = cleanStr.match(/^(\d{1,2})月(\d{1,2})日?$/);
+      if (jpd) {
+        dateObj = new Date(2026, parseInt(jpd[1]) - 1, parseInt(jpd[2]));
+      }
+    }
+  }
+
+  if (!dateObj || isNaN(dateObj.getTime())) {
+    return { isOverdue: false, isNear: false, isToday: false, daysRemaining: 999, label: '' };
+  }
+
+  const diffTime = dateObj.getTime() - today.getTime();
+  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+  if (diffDays < 0) {
+    return {
+      isOverdue: true,
+      isNear: true,
+      isToday: false,
+      daysRemaining: diffDays,
+      label: `期限超過 ${Math.abs(diffDays)}日`
+    };
+  } else if (diffDays === 0) {
+    return {
+      isOverdue: false,
+      isNear: true,
+      isToday: true,
+      daysRemaining: 0,
+      label: '本日〆切！'
+    };
+  } else if (diffDays <= 3) {
+    return {
+      isOverdue: false,
+      isNear: true,
+      isToday: false,
+      daysRemaining: diffDays,
+      label: `残り ${diffDays}日`
+    };
+  }
+
+  return {
+    isOverdue: false,
+    isNear: false,
+    isToday: false,
+    daysRemaining: diffDays,
+    label: `残り ${diffDays}日`
+  };
+}
 
 interface ProjectDetailViewProps {
   projects: Project[];
@@ -52,7 +126,7 @@ export default function ProjectDetailView({
   clients
 }: ProjectDetailViewProps) {
   // Current active project state matching the selectedProjectId
-  const project = projects.find(p => p.id === selectedProjectId) || projects[0] || null;
+  const project = selectedProjectId ? (projects.find(p => p.id === selectedProjectId) || null) : null;
 
   const [status, setStatus] = useState<ProjectStatus>('原稿執筆中');
   const [description, setDescription] = useState('');
@@ -80,6 +154,25 @@ export default function ProjectDetailView({
   const [googleCalendarSynced, setGoogleCalendarSynced] = useState(false);
   const [replyText, setReplyText] = useState('');
   const [googleMessages, setGoogleMessages] = useState<any[]>([]);
+
+  // Project list states (when no project is selected)
+  const [listSearchTerm, setListSearchTerm] = useState('');
+  const [listFunnelFilter, setListFunnelFilter] = useState('all');
+  const [listStatusFilter, setListStatusFilter] = useState('all');
+
+  // Custom alerting states
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [acknowledgedAlerts, setAcknowledgedAlerts] = useState<string[]>([]);
+
+  // Automatically fade out notification toasts after 5 seconds
+  useEffect(() => {
+    if (toastMessage) {
+      const timer = setTimeout(() => {
+        setToastMessage(null);
+      }, 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [toastMessage]);
 
   // If a project is loaded, sync state values
   useEffect(() => {
@@ -390,11 +483,208 @@ ${aiGeneratedData.emailBody}
   };
 
   if (!project) {
+    const filtered = projects.filter(p => {
+      const matchesSearch = p.clientName.toLowerCase().includes(listSearchTerm.toLowerCase()) ||
+                            (p.description || '').toLowerCase().includes(listSearchTerm.toLowerCase());
+      const matchesFunnel = listFunnelFilter === 'all' || p.funnelType === listFunnelFilter;
+      const matchesStatus = listStatusFilter === 'all' || p.status === listStatusFilter;
+      return matchesSearch && matchesFunnel && matchesStatus;
+    });
+
+    const funnelTypes = Array.from(new Set(projects.map(p => p.funnelType)));
+    const statusTypes = Array.from(new Set(projects.map(p => p.status)));
+
     return (
-      <div className="py-20 text-center bg-white rounded-3xl border border-slate-200 space-y-4 max-w-xl mx-auto">
-        <Briefcase className="h-10 w-10 text-slate-300 mx-auto" />
-        <p className="text-slate-800 font-bold">アクティブなプロジェクトが存在しません</p>
-        <p className="text-slate-400 text-xs">「プロジェクト管理」メニューから新規追加するか、有効なプロジェクトを選択してください。</p>
+      <div className="space-y-6">
+        {/* UTAGE MCP Informative Header */}
+        <div className="bg-gradient-to-r from-slate-905 from-slate-900 to-indigo-950 p-6 rounded-3xl text-white border border-indigo-950/40 shadow-md">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+            <div className="space-y-2">
+              <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md bg-indigo-500/20 text-indigo-300 text-[10px] font-black border border-indigo-500/30">
+                <Layers className="h-3.5 w-3.5 text-indigo-300" />
+                <span>UTAGE Hub 総合進捗ダッシュボード</span>
+              </div>
+              <h2 className="text-xl md:text-2xl font-black text-white tracking-tight m-0">全件案件 総合構築進捗一覧</h2>
+              <p className="text-xs text-indigo-200/80 max-w-2xl leading-relaxed font-semibold mt-1">
+                構築要件・フェーズ・マイルストーン別進捗状況を、一元横断して確認・管理可能です。各案件の「詳細ワークスペース」を開いて、タスクアサインや追加要望ログ、AI構成原稿の自動生成などを実行できます。
+              </p>
+            </div>
+          </div>
+
+          {/* Stats quick card grid within summary */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-6 pt-5 border-t border-white/10 text-xs">
+            <div className="bg-white/5 p-3.5 rounded-2xl border border-white/5 font-semibold">
+              <p className="text-slate-300 font-bold text-[10px] tracking-wider uppercase mb-1">追跡案件総数</p>
+              <p className="text-xl font-black font-mono">{projects.length} 件</p>
+            </div>
+            <div className="bg-white/5 p-3.5 rounded-2xl border border-white/5 font-semibold">
+              <p className="text-emerald-300 font-bold text-[10px] tracking-wider uppercase mb-1">本番稼働中</p>
+              <p className="text-xl font-black font-mono text-emerald-300">
+                {projects.filter(p => p.status === '本番稼働中').length} 件
+              </p>
+            </div>
+            <div className="bg-white/5 p-3.5 rounded-2xl border border-white/5 font-semibold">
+              <p className="text-indigo-300 font-bold text-[10px] tracking-wider uppercase mb-1">実装・テスト中</p>
+              <p className="text-xl font-black font-mono text-indigo-300">
+                {projects.filter(p => p.status === 'UTAGE実装中' || p.status === 'テスト運用中').length} 件
+              </p>
+            </div>
+            <div className="bg-white/5 p-3.5 rounded-2xl border border-white/5 font-semibold">
+              <p className="text-amber-300 font-bold text-[10px] tracking-wider uppercase mb-1">平均構築進行度</p>
+              <p className="text-xl font-black font-mono text-amber-305">
+                {projects.length > 0 ? Math.round(projects.reduce((acc, p) => acc + (p.progress || 0), 0) / projects.length) : 0}%
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* Filter controls row */}
+        <div className="bg-white p-5 rounded-3xl border border-slate-205 shadow-2xs flex flex-col md:flex-row gap-4 items-center justify-between">
+          <div className="flex flex-1 flex-col sm:flex-row gap-3 w-full">
+            <div className="relative flex-1">
+              <Search className="absolute left-3.5 top-3 h-4 w-4 text-slate-400" />
+              <input
+                type="text"
+                placeholder="クライアント名、概要を検索..."
+                value={listSearchTerm}
+                onChange={(e) => setListSearchTerm(e.target.value)}
+                className="w-full text-xs rounded-xl border border-slate-200 pl-9 pr-4 py-2.5 bg-slate-50/50 text-slate-800 placeholder-slate-400 focus:outline-hidden focus:ring-1 focus:ring-indigo-500 font-semibold"
+              />
+            </div>
+
+            <div className="w-full sm:w-48">
+              <select
+                value={listFunnelFilter}
+                onChange={(e) => setListFunnelFilter(e.target.value)}
+                className="w-full text-xs font-bold rounded-xl border border-slate-200 px-3 py-2.5 bg-slate-50/50 text-slate-705 focus:bg-white focus:ring-1 focus:ring-indigo-500 cursor-pointer"
+              >
+                <option value="all">すべてのファネル形式</option>
+                {funnelTypes.map(ft => (
+                  <option key={ft} value={ft}>{ft}</option>
+                ))}
+              </select>
+            </div>
+
+            <div className="w-full sm:w-48">
+              <select
+                value={listStatusFilter}
+                onChange={(e) => setListStatusFilter(e.target.value)}
+                className="w-full text-xs font-bold rounded-xl border border-slate-200 px-3 py-2.5 bg-slate-50/50 text-slate-705 focus:bg-white focus:ring-1 focus:ring-indigo-500 cursor-pointer"
+              >
+                <option value="all">すべてのフェーズ</option>
+                {statusTypes.map(st => (
+                  <option key={st} value={st}>{st}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+        </div>
+
+        {/* High Density Table & Progression block */}
+        <div className="bg-white rounded-3xl border border-slate-200 overflow-hidden shadow-[0_4px_24px_-4px_rgba(0,0,0,0.03),0_1px_3px_rgba(0,0,0,0.02)]">
+          <div className="overflow-x-auto">
+            <table className="w-full text-left border-collapse">
+              <thead>
+                <tr className="bg-slate-50 border-b border-slate-200 text-slate-500 text-[11px] font-black uppercase tracking-wider">
+                  <th className="py-4 px-6">顧客名（クライアント様）</th>
+                  <th className="py-4 px-3">ファネル形式</th>
+                  <th className="py-4 px-3">総合構築進捗率</th>
+                  <th className="py-4 px-3">タスク完了状況</th>
+                  <th className="py-4 px-3">現在の開発フェーズ</th>
+                  <th className="py-4 px-3">目標期日</th>
+                  <th className="py-4 px-6 text-right font-black">詳細作業</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100 font-semibold text-slate-700 text-xs">
+                {filtered.map((proj) => {
+                  const completedSteps = proj.funnelSteps?.filter(s => s.status === '完了').length || 0;
+                  const totalSteps = proj.funnelSteps?.length || 0;
+                  
+                  return (
+                    <tr 
+                      key={proj.id}
+                      className="hover:bg-slate-50/40 transition-colors"
+                    >
+                      <td className="py-4 px-6">
+                        <div>
+                          <p 
+                            onClick={() => onSelectProject(proj.id)} 
+                            className="font-black text-slate-900 text-sm hover:text-indigo-650 transition-colors cursor-pointer"
+                          >
+                            {proj.clientName}
+                          </p>
+                          <p className="text-[10px] text-slate-400 font-medium line-clamp-1 mt-0.5">{proj.description}</p>
+                        </div>
+                      </td>
+                      <td className="py-4 px-3">
+                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-slate-100 text-slate-700 border border-slate-200/60 text-[10px] font-black">
+                          {proj.funnelType}
+                        </span>
+                      </td>
+                      <td className="py-4 px-3">
+                        <div className="space-y-1.5 max-w-[160px]">
+                          <div className="flex justify-between items-center text-[10px]">
+                            <span className="font-mono font-black text-slate-805">{proj.progress}%</span>
+                          </div>
+                          <div className="w-full h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                            <div 
+                              className={`h-full rounded-full transition-all duration-500 ${
+                                proj.progress === 100 ? 'bg-emerald-500' : 'bg-indigo-600'
+                              }`} 
+                              style={{ width: `${proj.progress}%` }}
+                            />
+                          </div>
+                        </div>
+                      </td>
+                      <td className="py-4 px-3 text-slate-500 text-[11px] font-bold">
+                        {completedSteps} / {totalSteps} ステップ
+                      </td>
+                      <td className="py-4 px-3">
+                        <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[10px] font-black ${
+                          proj.status === '本番稼働中' ? 'bg-emerald-55 bg-emerald-50 text-emerald-700 border border-emerald-100' :
+                          proj.status === 'テスト運用中' ? 'bg-teal-50 text-teal-700 border border-teal-100' :
+                          proj.status === 'UTAGE実装中' ? 'bg-indigo-50 text-indigo-700 border border-indigo-100' :
+                          proj.status === 'クライアント確認中' ? 'bg-amber-50 text-amber-700 border border-amber-100' :
+                          'bg-slate-100 text-slate-650 border border-slate-200'
+                        }`}>
+                          <span className={`w-1.5 h-1.5 rounded-full ${
+                            proj.status === '本番稼働中' ? 'bg-emerald-500' :
+                            proj.status === 'テスト運用中' ? 'bg-teal-500' :
+                            proj.status === 'UTAGE実装中' ? 'bg-indigo-500' :
+                            proj.status === 'クライアント確認中' ? 'bg-amber-500' : 'bg-slate-400'
+                          }`} />
+                          {proj.status}
+                        </span>
+                      </td>
+                      <td className="py-4 px-3 font-mono text-slate-500 text-[11px]">
+                        {proj.targetDate}
+                      </td>
+                      <td className="py-4 px-6 text-right">
+                        <button
+                          type="button"
+                          onClick={() => onSelectProject(proj.id)}
+                          className="px-3.5 py-1.5 bg-indigo-50 hover:bg-indigo-600 text-indigo-600 hover:text-white rounded-xl text-xs font-black transition-all cursor-pointer border border-indigo-200 hover:border-indigo-600 shadow-3xs"
+                        >
+                          詳細ワークスペース ➔
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+
+          {filtered.length === 0 && (
+            <div className="py-16 text-center bg-white border-t border-slate-150 flex flex-col items-center justify-center space-y-3">
+              <AlertCircle className="h-6 w-6 text-slate-350" />
+              <div>
+                <p className="text-slate-800 font-extrabold text-sm">該当するプロジェクトが見つかりません</p>
+                <p className="text-slate-400 text-xs mt-0.5">フィルターの絞り込み条件を緩和してください。</p>
+              </div>
+            </div>
+          )}
+        </div>
       </div>
     );
   }
@@ -403,24 +693,160 @@ ${aiGeneratedData.emailBody}
     <div className="space-y-6 text-slate-800">
       {/* Search selection project switcher for fluid navigation */}
       <div className="bg-white px-5 py-4 rounded-2xl border border-slate-200/80 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div className="flex items-center gap-2">
-          <ArrowLeftRight className="h-4.5 w-4.5 text-indigo-500 shrink-0" />
-          <span className="text-xs font-black text-slate-400 tracking-wider">作業プロジェクト切替 :</span>
-          <select
-            value={project.id}
-            onChange={(e) => onSelectProject(e.target.value)}
-            className="text-xs font-extrabold text-indigo-800 bg-slate-50 border border-indigo-150 rounded-xl px-3 py-2 focus:bg-white focus:outline-hidden cursor-pointer"
+        <div className="flex items-center gap-3.5 flex-wrap">
+          <button
+            type="button"
+            onClick={() => onSelectProject(null)}
+            className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-black rounded-xl border border-slate-200 cursor-pointer transition-colors"
           >
-            {projects.map(p => (
-              <option key={p.id} value={p.id}>{p.clientName} ({p.funnelType})</option>
-            ))}
-          </select>
+            <ArrowLeft className="h-3.5 w-3.5" />
+            <span>← 総合進捗一覧に戻る</span>
+          </button>
+          
+          <div className="h-4 w-[1px] bg-slate-200 hidden sm:block" />
+
+          <div className="flex items-center gap-2">
+            <ArrowLeftRight className="h-4 w-4 text-indigo-550 text-indigo-500 shrink-0" />
+            <span className="text-[10px] font-black text-slate-400 tracking-wider uppercase">詳細切替:</span>
+            <select
+              value={project.id}
+              onChange={(e) => onSelectProject(e.target.value)}
+              className="text-xs font-extrabold text-indigo-800 bg-slate-50 border border-indigo-150 rounded-xl px-3 py-1.5 focus:bg-white focus:outline-hidden cursor-pointer"
+            >
+              {projects.map(p => (
+                <option key={p.id} value={p.id}>{p.clientName} ({p.funnelType})</option>
+              ))}
+            </select>
+          </div>
         </div>
 
-        <div className="text-xs text-slate-400">
-          全 <strong className="text-slate-700">{projects.length}</strong> 案件中、現在選択されている詳細ワークスペースを表示中
+        <div className="text-xs text-slate-550 font-bold">
+          対象クライアント: <strong className="text-indigo-600 font-black">{project.clientName}</strong> 様のワークスペースを検証中
         </div>
       </div>
+
+      {/* Real-time Notification Toast overlay */}
+      {toastMessage && (
+        <div className="fixed bottom-5 right-5 z-50 bg-[#0f172a] text-white rounded-2xl shadow-xl border border-slate-700 p-4 max-w-sm flex items-center justify-between gap-3 animate-slide-up duration-350">
+          <div className="flex items-center gap-3">
+            <span className="flex items-center justify-center w-8 h-8 rounded-full bg-indigo-500/10 text-indigo-400 shrink-0">
+              <Bell className="h-4.5 w-4.5" />
+            </span>
+            <div className="text-xs">
+              <p className="font-black text-white">リアルタイム進捗通知</p>
+              <p className="text-slate-300 font-semibold leading-relaxed mt-0.5">{toastMessage}</p>
+            </div>
+          </div>
+          <button 
+            type="button" 
+            onClick={() => setToastMessage(null)} 
+            className="text-slate-400 hover:text-white font-black text-xs cursor-pointer p-1"
+          >
+            ✕
+          </button>
+        </div>
+      )}
+
+      {/* Urgent task deadline alerts */}
+      {(() => {
+        const urgentSteps = steps.filter(step => {
+          if (step.status === '完了') return false;
+          const stat = parseDeadlineStatus(step.targetDate, step.status);
+          return stat.isNear && !acknowledgedAlerts.includes(step.id);
+        });
+
+        if (urgentSteps.length > 0) {
+          return (
+            <div className="bg-rose-50/70 border border-rose-200/90 rounded-3xl p-5 space-y-4 shadow-3xs animate-fade-in">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-rose-100">
+                <div className="flex items-center gap-2.5">
+                  <span className="flex items-center justify-center w-8.5 h-8.5 rounded-2xl bg-rose-100 text-rose-600">
+                    <AlertTriangle className="h-5 w-5 animate-pulse" />
+                  </span>
+                  <div>
+                    <h4 className="text-sm font-black text-rose-950 tracking-tight">🚨 マイルストーン期限警告 : 超過・期限間近タスクを検出</h4>
+                    <p className="text-[10px] text-rose-700/80 font-bold mt-0.5">※ 本日の進行基準日（2026年6月10日）を基に対象要件をリアルタイム分析しています。</p>
+                  </div>
+                </div>
+                <span className="bg-rose-100 text-rose-800 text-[10px] font-black px-2.5 py-1 rounded-lg border border-rose-200 shrink-0 self-start sm:self-center">
+                  要対応アラート {urgentSteps.length} 件
+                </span>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
+                {urgentSteps.map(step => {
+                  const dStat = parseDeadlineStatus(step.targetDate, step.status);
+                  return (
+                    <div key={step.id} className="bg-white/95 backdrop-blur-md p-4 rounded-2xl border border-rose-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs shadow-3xs">
+                      <div className="space-y-1.5">
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <span className={`text-[9px] font-black px-2 py-0.5 rounded ${
+                            dStat.isOverdue ? 'bg-rose-100 text-rose-805 border border-rose-205' : 'bg-amber-100 text-amber-900 border border-amber-205'
+                          }`}>
+                            {dStat.label}
+                          </span>
+                          <strong className="text-slate-900 text-xs font-black">{step.name}</strong>
+                        </div>
+                        <p className="text-[10px] text-slate-450 font-semibold">
+                          担当クルー: <strong className="text-slate-700">{step.assignee || '未担当'}</strong> • 期日設定: <strong className="font-mono text-slate-700">{step.targetDate || '設定なし'}</strong>
+                        </p>
+                      </div>
+
+                      <div className="flex items-center gap-2 border-t sm:border-0 pt-2 sm:pt-0 shrink-0">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setToastMessage(`📢 [${step.assignee || '未割り当て'}] 宛に、マイルストーン「${step.name}」の推進督促（Slack/LINE）を配信しました。`);
+                            
+                            // Log event into project history securely
+                            const newLog: ProjectHistoryLog = {
+                              id: `remind-log-${Date.now()}`,
+                              timestamp: '今日 11:35',
+                              category: 'update_log',
+                              author: '自動アラートシステム',
+                              content: `🔔 【スピード対応要請】タスク「${step.name}」担当の ${step.assignee || '未設定'} メンバーに対し、アラート通知＆Slack/LINE WORKSリマインドの自動一斉送信を実行しました。`
+                            };
+                            const updatedLogs = project.historyLogs ? [newLog, ...project.historyLogs] : [newLog];
+                            const updatedProj = { ...project, historyLogs: updatedLogs };
+                            onUpdateProject(updatedProj);
+                          }}
+                          className="px-3 py-1.5 bg-rose-600 hover:bg-rose-700 text-white text-[10px] font-black rounded-xl transition-all cursor-pointer shadow-3xs hover:shadow-2xs"
+                        >
+                          即時リマインド送信
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setAcknowledgedAlerts(prev => [...prev, step.id])}
+                          className="px-2 py-1.5 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg text-[10px] font-black cursor-pointer transition-colors"
+                          title="このアラートを一時的に閉じる"
+                        >
+                          非表示
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          );
+        } else {
+          return (
+            <div className="bg-emerald-50/50 border border-emerald-100/90 rounded-2xl p-4.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs text-slate-600 font-bold animate-fade-in shadow-3xs">
+              <div className="flex items-center gap-2.5">
+                <span className="flex items-center justify-center w-7.5 h-7.5 rounded-full bg-emerald-100 text-emerald-600 shrink-0">
+                  <CheckCircle2 className="h-4.5 w-4.5" />
+                </span>
+                <p className="text-emerald-950 font-black">
+                  期限超過、または3日以内に期日を迎える構築マイルストーンはありません。マイルストーン進行は順調です。
+                </p>
+              </div>
+              <span className="text-[10px] text-emerald-600 font-extrabold tracking-wider uppercase font-mono self-start sm:self-center shrink-0">
+                STATUS: OPTIMAL
+              </span>
+            </div>
+          );
+        }
+      })()}
 
       {/* Main workspace cards */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
@@ -636,60 +1062,77 @@ ${aiGeneratedData.emailBody}
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {steps.map((step) => (
-                    <div key={step.id} className="bg-slate-50/50 p-4 rounded-xl border border-slate-200 shadow-3xs space-y-3.5 hover:border-slate-350 transition-colors">
-                      <div className="flex items-start justify-between gap-1.5 min-h-[40px]">
-                        <span className="text-xs font-extrabold text-slate-800 leading-normal">
-                          {step.name}
-                        </span>
-                        <span className={`px-2 py-0.5 rounded-md text-[9px] font-extrabold border shrink-0 ${getStepStatusClasses(step.status)}`}>
-                          {step.status}
-                        </span>
-                      </div>
-
-                      <div className="grid grid-cols-2 gap-2 text-[10px] pt-2 border-t border-slate-100">
-                        <div>
-                          <span className="block text-[8px] text-slate-400 font-bold uppercase mb-0.5">アサイン</span>
-                          <select
-                            value={step.assignee || ''}
-                            onChange={(e) => {
-                              const updatedSteps = steps.map(s => 
-                                s.id === step.id ? { ...s, assignee: e.target.value } : s
-                              );
-                              setSteps(updatedSteps);
-                              const updatedProj: Project = { ...project, funnelSteps: updatedSteps };
-                              onUpdateProject(updatedProj);
-                            }}
-                            className="w-full text-xs font-bold text-slate-750 bg-white border border-slate-200 rounded-md px-1.5 py-1 focus:outline-hidden cursor-pointer"
-                          >
-                            <option value="">未設定</option>
-                            {members.map(m => (
-                              <option key={m.id} value={m.name}>{m.name} ({m.role})</option>
-                            ))}
-                            {step.assignee && !members.some(m => m.name === step.assignee) && (
-                              <option value={step.assignee}>{step.assignee}</option>
+                  {steps.map((step) => {
+                    const dStat = parseDeadlineStatus(step.targetDate, step.status);
+                    const borderStyle = dStat.isOverdue 
+                      ? 'border-rose-300 bg-rose-50/30 hover:border-rose-400' 
+                      : dStat.isNear 
+                        ? 'border-amber-300 bg-amber-50/30 hover:border-amber-400' 
+                        : 'border-slate-200 bg-slate-50/50 hover:border-slate-350';
+                    return (
+                      <div key={step.id} className={`p-4 rounded-xl border shadow-3xs space-y-3.5 transition-colors ${borderStyle}`}>
+                        <div className="flex items-start justify-between gap-1.5 min-h-[40px]">
+                          <div className="space-y-1">
+                            <span className="text-xs font-extrabold text-slate-800 leading-normal block">
+                              {step.name}
+                            </span>
+                            {dStat.isNear && (
+                              <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[9px] font-extrabold ${
+                                dStat.isOverdue ? 'bg-rose-100 text-rose-700' : 'bg-amber-100 text-amber-800'
+                              }`}>
+                                {dStat.isOverdue ? <AlertTriangle className="h-3.5 w-3.5 shrink-0" /> : <Clock className="h-3.5 w-3.5 text-amber-600 animate-pulse shrink-0" />}
+                                <span>{dStat.label}</span>
+                              </span>
                             )}
-                          </select>
+                          </div>
+                          <span className={`px-2 py-0.5 rounded-md text-[9px] font-extrabold border shrink-0 ${getStepStatusClasses(step.status)}`}>
+                            {step.status}
+                          </span>
                         </div>
 
-                        <div>
-                          <span className="block text-[8px] text-slate-400 font-bold uppercase mb-0.5">期日目安</span>
-                          <input
-                            type="text"
-                            value={step.targetDate || ''}
-                            onChange={(e) => {
-                              const updatedSteps = steps.map(s => 
-                                s.id === step.id ? { ...s, targetDate: e.target.value } : s
-                              );
-                              setSteps(updatedSteps);
-                              const updatedProj: Project = { ...project, funnelSteps: updatedSteps };
-                              onUpdateProject(updatedProj);
-                            }}
-                            placeholder="例: 6月20日"
-                            className="w-full text-xs font-bold text-slate-750 bg-white border border-slate-200 rounded-md px-2 py-1 focus:outline-hidden"
-                          />
+                        <div className="grid grid-cols-2 gap-2 text-[10px] pt-2 border-t border-slate-100">
+                          <div>
+                            <span className="block text-[8px] text-slate-400 font-bold uppercase mb-0.5">アサイン</span>
+                            <select
+                              value={step.assignee || ''}
+                              onChange={(e) => {
+                                const updatedSteps = steps.map(s => 
+                                  s.id === step.id ? { ...s, assignee: e.target.value } : s
+                                );
+                                setSteps(updatedSteps);
+                                const updatedProj: Project = { ...project, funnelSteps: updatedSteps };
+                                onUpdateProject(updatedProj);
+                              }}
+                              className="w-full text-xs font-bold text-slate-750 bg-white border border-slate-200 rounded-md px-1.5 py-1 focus:outline-hidden cursor-pointer"
+                            >
+                              <option value="">未設定</option>
+                              {members.map(m => (
+                                <option key={m.id} value={m.name}>{m.name} ({m.role})</option>
+                              ))}
+                              {step.assignee && !members.some(m => m.name === step.assignee) && (
+                                <option value={step.assignee}>{step.assignee}</option>
+                              )}
+                            </select>
+                          </div>
+
+                          <div>
+                            <span className="block text-[8px] text-slate-400 font-bold uppercase mb-0.5">期日目安</span>
+                            <input
+                              type="text"
+                              value={step.targetDate || ''}
+                              onChange={(e) => {
+                                const updatedSteps = steps.map(s => 
+                                  s.id === step.id ? { ...s, targetDate: e.target.value } : s
+                                );
+                                setSteps(updatedSteps);
+                                const updatedProj: Project = { ...project, funnelSteps: updatedSteps };
+                                onUpdateProject(updatedProj);
+                              }}
+                              placeholder="例: 6月20日"
+                              className="w-full text-xs font-bold text-slate-750 bg-white border border-slate-200 rounded-md px-2 py-1 focus:outline-hidden"
+                            />
+                          </div>
                         </div>
-                      </div>
 
                       <div className="flex items-center justify-between pt-2 border-t border-slate-150">
                         <span className="text-[9px] text-slate-400 font-bold">状況切替:</span>
@@ -710,8 +1153,9 @@ ${aiGeneratedData.emailBody}
                           ))}
                         </div>
                       </div>
-                    </div>
-                  ))}
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
             )}
@@ -1131,6 +1575,8 @@ ${aiGeneratedData.emailBody}
                 )}
               </div>
             )}
+
+            {/* Truncated tabs blocks placeholder */}
           </div>
 
           <div className="mt-6 pt-4 border-t border-slate-200/80 text-center text-[10px] text-slate-400">
