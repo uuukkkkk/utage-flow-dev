@@ -9,7 +9,8 @@ import {
   TrendingUp,
   Workflow,
   Contact,
-  UserCheck
+  UserCheck,
+  BookOpen
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
@@ -28,6 +29,7 @@ export default function Sidebar({ activeTab, setActiveTab, isOpen, setIsOpen }: 
     { id: 'analysis', label: '分析・統計', icon: TrendingUp },
     { id: 'team', label: '組織・メンバー', icon: UserCheck },
     { id: 'templates', label: 'ファネルテンプレート', icon: FileCode },
+    { id: 'guide', label: '使い方マニュアル', icon: BookOpen },
     { id: 'settings', label: 'システム設定', icon: Settings },
   ];
 

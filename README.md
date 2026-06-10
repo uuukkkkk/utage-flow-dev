@@ -1,20 +1,153 @@
-<div align="center">
-<img width="1200" height="475" alt="GHBanner" src="https://ai.google.dev/static/site-assets/images/share-ais-513315318.png" />
-</div>
+# UTAGE Flow - UTAGE構築プロフェッショナル専用ワークスペース管理プラットフォーム
 
-# Run and deploy your AI Studio app
+本リポジトリは、UTAGEシステム（旧ファネルシステム）の構築・導入を進めるクリエイター、ディレクター、および構築クルーのための**一元連携ワークスペース管理ハブ (UTAGE Flow)** です。
 
-This contains everything you need to run your app locally.
+顧客コミュニケーション、マイルストーン別の詳細なステップ進行状況、Google社ツール群とのスマート同期、さらにはGemini 3.5 APIを活用したLP & メール原稿のワンクリック生成を完全統合しています。
 
-View your app in AI Studio: https://ai.studio/apps/2dc02959-407e-4515-af2c-dc1135b1971a
+---
 
-## Run Locally
+## 🎨 1. 主要機能 (Main Modules)
 
-**Prerequisites:**  Node.js
+本システムは、構築作業における「情報の散らばり」を排除し、ディレクターと作業エンジニアが全く同じ進捗と顧客の真の要求レベルを共有できるよう設計されています。
 
+### ① プロジェクト進捗・Kanbanボード (Project Management)
+- クライアントごとに「原稿執筆中」「クライアント確認中」「UTAGE実装中」「テスト運用中」「本番稼働中」の5段階カルテで管理。
+- **ドラッグ＆ドロップ(Kanban D&D)**での感覚的なフェーズ変更。ステータス遷移に合わせて「タイムライン履歴」へ証拠ログが自動生成されます。
+- クライアント別受注規模(予算)や背景目的のワンライナー編集カードを左サイドに常時確保。
 
-1. Install dependencies:
-   `npm install`
-2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
-3. Run the app:
-   `npm run dev`
+### ② 各ファネル構成ステップのガバナンス (Detailed Funnel Steps)
+- 作成するステップ（例：オプトイン募集LP、決済フォーム、サンクスページ、確認メール）ごとに、専属の構築エンジニア/ライターをアサインし目標期日を決定。
+- 構成ステップ各々の開発状態（未着手・制作中・確認中・完了）変更を検知し、**案件の「総合開発進捗率（%）」を自動加重平均算定**。
+
+### ③ Google Workspace 仮想リアルタイム連携 (Google Integration)
+- **Google Chat / Gmail一元チャット：** 顧客がGoogle Chat SpaceやGmailに投稿した最新対談をエミュレート。チャット下部から返信を入力・送信すると、自動で外部顧客へ同期配信(API/Web)されると同時に「決定事項履歴」へ同期転写。
+- **Google Calendar同期：** 1クリックでカレンダーと双方向マッピング。本システム上の目標期日やテスト予定日をGoogle側のクライアント共同スケジュールにアラート付きで自動挿入。
+- **Google Driveエクスプローラ：** LP原稿案（Word）や、ファーストビュー画像（PNG）、紐付けスプレッドシート等を一元で直接確認可能。
+
+### ④ Gemini 3.5 AI原稿ジェネレーター (AI Copywriting)
+- Googleの最新AI大規模言語モデル「Gemini API」をサーバーサイドに直結(Secure API proxy)。
+- 生成したいファネルステップ（LP、配信メール、サンクス等）と顧客業界特性を自動解析。
+- **キャッチコピー、サブコピー、CTAボタン文言、および行動変容を促すステップ配信メール案（件名＆詳細本文）**を、2秒で自動生成。
+- 「💡 メモ欄への転記マージ」により、ディレクターの構築申し送りメモへ瞬時に書き込みが可能。
+
+---
+
+## 📅 2. 使い方マニュアル (Step-by-Step User Guide)
+
+### ステップ1: クライアント及び案件の新規登録
+1. トップ画面「プロジェクト管理」から、右上の「＋ 新規プロジェクトの登録」をクリック。
+2. 顧客名、ご予算規模、ファネルタイプ（例: オンラインサロン決済型、2ステップセミナー集客等）、期日を入力。
+3. 開始ボタンを押すと、各ファネルタイプ専用に事前定義された標準マイルストーン（Funnel Steps）が自動的に生成・シード配置されます。
+
+### ステップ2: クルー割当と進捗反映
+1. 目的のプロジェクトカードをダブルクリック、または左側メニュー「案件詳細ワークスペース」へ移動。
+2. 「構築タスクステップ」タブにて、タスクごとに「田中(デザイナー)」「鈴木(ライター)」のように担当者と対象期日をアサイン。
+3. 作業が進むにつれ、下部の「制作中」「確認中」「完了」ボタンで状況を変更します。画面上部の「総合ファーズ進捗（%）」が正しく連動して増えていくことを確認してください。
+
+### ステップ3: 顧客からの細かな要望・決定ログの書き込み
+1. クライアントとのZOOM打ち合わせや、仕様の追加オーダーが発生した場合、「追加要望・決定ログ」タブを開きます。
+2. 要望区分（顧客追加要望、会議決定、要件変更）を選択。
+3. 内容（例:「銀行振込時の自動案内メールも別で欲しい」など）を記録しマージ。これによりログとして安全に退避・共有されます。
+
+### ステップ4: Googleエコシステムチャット＆ドライブ監視
+1. 顧客が投げかけてきたGoogle Chat Spaceメッセージと添付ドライブ資料を「Google 連携チャット」タブで確認。
+2. 面倒なチャットツールの切り替えをせず、このワークスペースから返信をタイピング入力することで即座に同期完結します。
+
+### ステップ5: Geminiでのライティング
+1. 「Gemini AI原稿生成」タブを選択。
+2. 原稿を作成したいステップをプルダウンから選びます。
+3. 生成ボタンを押し、数秒待つだけで感動的なオリジナル文言が組み立てられます。
+
+---
+
+## 🛠️ 3. 技術設計・アーキテクチャ・モジュール構造
+
+本システムは、保守性の向上と機密情報(API Key)の漏洩防止のため、サーバーサイドとクライアントサイドを明確に分離した堅牢な設計（Full-Stack Proxy Architecture）となっています。
+
+```
+├── README.md               <-- 本設計ドキュメント
+├── package.json            <-- システム依存関係 & 起動スクリプト
+├── server.ts               <-- Node.js + Express サーバー (開発・本番共通プロキシ)
+├── vite.config.ts          <-- Vite環境設定
+├── metadata.json           <-- システム情報 & 機密パーミッション管理
+├── src/
+│   ├── main.tsx            <-- クライアントエントリー
+│   ├── App.tsx             <-- メインSPAレイアウト & ルーティング
+│   ├── types.ts            <-- タイプ・インターフェース・Enum定義
+│   ├── index.css           <-- Tailwind CSS グローバルスタイル
+│   ├── components/         <-- 各ビューモジュール
+│   │   ├── Sidebar.tsx             <-- サイドメニューナビ
+│   │   ├── ProjectDashboard.tsx    <-- メインKanbanボード & Bentoメトリクス
+│   │   ├── ProjectDetailView.tsx   <-- 詳細ワークスペース (D&D、AI、Google)
+│   │   ├── GuideView.tsx           <-- 使い方公式マニュアル (本画面)
+│   │   ├── ClientList.tsx          <-- 顧客台帳管理
+│   │   ├── AnalysisView.tsx        <-- 納期・売上・リソース稼働分析
+│   │   ├── TeamManagement.tsx      <-- 組織・専属クルーの追加削除
+│   │   ├── TemplateList.tsx        <-- 定型UTAGE設計図の閲覧
+│   │   ├── Settings.tsx            <-- システム設定
+│   │   └── ProjectDetailModal.tsx  <-- 高速オーバーレイモダール
+│   └── data/
+│       └── mockData.ts     <-- 初期マイルストーン、サンプルデータ
+```
+
+### 🔒 データの安全性：Gemini APIプロキシ構造
+クライアントから直呼び出しによるAPI Keyの盗聴・流出を完全に防ぐため、Gemini 3.5 API呼び出しはすべてExpressサーバー（`server.ts`）を経由して実行されます。
+
+- **サーバーエンドポイント例:** `/api/generate-funnel-helper`
+- **環境変数:** `GEMINI_API_KEY` (ローカル起動用 `.env` またはデプロイ環境に設定)
+
+### 📈 主要型定義例 (`src/types.ts`)
+```typescript
+export interface Project {
+  id: string;               // ユニークID
+  clientId: string;         // 対象顧客ID
+  clientName: string;       // 顧客名様
+  funnelType: FunnelType;   // ファネルのカテゴリ
+  status: ProjectStatus;     // Kanbanステータス
+  progress: number;         // 進捗 (0〜100%)
+  startDate: string;        // 開始日
+  targetDate: string;       // 目標予定日
+  revenue?: string;         // 受注ご予算 (円桁)
+  description: string;      // システム方向目標・想定ターゲット
+  notes?: string;           // 開発ディレクター申し送りメモ
+  funnelSteps?: FunnelStep[]; // タスクステップ群
+  historyLogs?: ProjectHistoryLog[]; // 双方向タイムラインログ
+}
+```
+
+---
+
+## 🚀 4. ローカル起動・開発セットアップ
+
+本ソフトウェアはNodejs 18+で稼働します。
+
+### 1. 依存ライブラリのインストール
+```bash
+npm install
+```
+
+### 2. 環境変数のセットアップ
+ルートディレクトリに `.env` ファイルを作成し、Gemini APIキーを設定します（`.env.example`を参照）。
+```env
+GEMINI_API_KEY=YOUR_GEMINI_API_KEY_HERE
+```
+
+### 3. 開発用サーバーの起動
+```bash
+npm run dev
+```
+ブラウザより `http://localhost:3000` にアクセスして動作を確認します。ViteホットビルドとExpressサーバーが一体となり動作します。
+
+### 4. 単独静的ビルドおよび本番駆動
+```bash
+# ビルド
+npm run build
+
+# 本番動作起動
+npm run start
+```
+
+---
+
+開発・構築中の課題やAPIの追加は、本マニュアルの**「第5章 技術設計」**を基準に適宜コミットとプルリクエストを進めてください。
+皆様の構築ワークスペースを快適にし、UTAGE導入業務の最大効率化を心よりご支援しております。

@@ -6,6 +6,7 @@ import TemplateList from './components/TemplateList';
 import SettingsView from './components/Settings';
 import ProjectDetailModal from './components/ProjectDetailModal';
 import ProjectDetailView from './components/ProjectDetailView';
+import GuideView from './components/GuideView';
 import NewProjectModal from './components/NewProjectModal';
 import AnalysisView from './components/AnalysisView';
 import TeamManagement from './components/TeamManagement';
@@ -178,6 +179,8 @@ export default function App() {
         );
       case 'settings':
         return <SettingsView />;
+      case 'guide':
+        return <GuideView />;
       default:
         return (
           <div className="py-12 text-center text-slate-500">
@@ -212,6 +215,7 @@ export default function App() {
                activeTab === 'analysis' ? '分析・統計ダッシュボード' :
                activeTab === 'team' ? '組織・専属メンバー' :
                activeTab === 'templates' ? 'ファネルテンプレート' :
+               activeTab === 'guide' ? '使い方マニュアル・設計規定書' :
                'システム設定'}
             </span>
           </div>
