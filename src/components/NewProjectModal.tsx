@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, Plus, Sparkles } from 'lucide-react';
+import { X, Plus, Sparkles, Check, AlertCircle } from 'lucide-react';
 import { motion } from 'motion/react';
 import { Project, FunnelType, ProjectStatus, FunnelStep, Client, TeamMember } from '../types';
 import { mockTemplates } from '../data/mockData';
@@ -23,6 +23,65 @@ export default function NewProjectModal({ isOpen, onClose, clients, members, onA
   const [revenue, setRevenue] = useState('');
   const [notes, setNotes] = useState('');
   const [useTemplate, setUseTemplate] = useState(true);
+
+  // AI Funnel Outline Generator States
+  const [targetAudience, setTargetAudience] = useState('');
+  const [aiOutfitData, setAiOutfitData] = useState<{
+    steps: { name: string; description: string }[];
+    copyPlaceholders: string;
+    timeline: string;
+  } | null>(null);
+  const [generatingOutline, setGeneratingOutline] = useState(false);
+  const [aiError, setAiError] = useState('');
+  const [customAiSteps, setCustomAiSteps] = useState<FunnelStep[] | null>(null);
+  const [isAiPanelOpen, setIsAiPanelOpen] = useState(false);
+
+  const handleGenerateAiBlueprint = async () => {
+    if (!targetAudience.trim()) {
+      setAiError('AIがファネル構成を設計するために、対象となるターゲット顧客層を入力してください。');
+      return;
+    }
+
+    setGeneratingOutline(true);
+    setAiError('');
+    setAiOutfitData(null);
+
+    try {
+      const response = await fetch('/api/generate-funnel-outline', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ targetAudience, funnelType })
+      });
+
+      if (!response.ok) {
+        throw new Error(`APIサーバーエラー: ステータス ${response.status}`);
+      }
+
+      const data = await response.json();
+      setAiOutfitData(data);
+    } catch (err: any) {
+      console.error(err);
+      setAiError(err.message || 'AI経由の構成設計に失敗しました。時間をおいて再試行してください。');
+    } finally {
+      setGeneratingOutline(false);
+    }
+  };
+
+  const handleApplyAiBlueprint = () => {
+    if (!aiOutfitData) return;
+
+    // Map AI recommended steps to FunnelSteps with generic incremental IDs
+    const mappedSteps: FunnelStep[] = aiOutfitData.steps.map((st, idx) => ({
+      id: `ai-step-${Date.now()}-${idx}`,
+      name: st.name,
+      status: '未着手' as const,
+      targetDate: `第${idx + 1}週`
+    }));
+
+    setCustomAiSteps(mappedSteps);
+    setDescription(`【ターゲット顧客】\n${targetAudience}\n\n【AI推薦・心理ライティングコピー構成】\n${aiOutfitData.copyPlaceholders}`);
+    setNotes(`【AI提案モデル・週間マイルストーン】\n${aiOutfitData.timeline}`);
+  };
 
   if (!isOpen) return null;
 
@@ -49,7 +108,9 @@ export default function NewProjectModal({ isOpen, onClose, clients, members, onA
 
     // Auto generate steps if requested, else empty setup
     let funnelSteps: FunnelStep[] = [];
-    if (useTemplate) {
+    if (customAiSteps && customAiSteps.length > 0) {
+      funnelSteps = customAiSteps;
+    } else if (useTemplate) {
       const matchingTemplate = mockTemplates.find(t => t.category === funnelType);
       if (matchingTemplate) {
         funnelSteps = matchingTemplate.steps.map((step, idx) => ({
@@ -93,6 +154,10 @@ export default function NewProjectModal({ isOpen, onClose, clients, members, onA
     setDescription('');
     setRevenue('');
     setNotes('');
+    setTargetAudience('');
+    setAiOutfitData(null);
+    setCustomAiSteps(null);
+    setIsAiPanelOpen(false);
     onClose();
   };
 
@@ -265,6 +330,142 @@ export default function NewProjectModal({ isOpen, onClose, clients, members, onA
               placeholder="作業上の注意、期日連絡などのリマインダーをここに記入"
               className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 focus:border-teal-500"
             />
+          </div>
+
+          {/* AI Funnel Outline Generator Accordion/Panel */}
+          <div className="border border-indigo-200 bg-gradient-to-br from-indigo-50/40 to-teal-50/20 p-5 rounded-xl space-y-4 shadow-2xs">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-2">
+                <span className="p-1.5 rounded-lg bg-indigo-100 text-indigo-700 shrink-0">
+                  <Sparkles className="h-4.5 w-4.5 text-indigo-600 animate-pulse" />
+                </span>
+                <div>
+                  <h4 className="text-sm font-black text-slate-800 flex items-center gap-1.5">
+                    Gemini AI ファネル自動設計アシスト (推奨)
+                  </h4>
+                  <p className="text-[10px] text-slate-500 font-bold">ターゲットを指定するだけで、構築ステップ・構成コピー・期日計画を全自動生成します</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsAiPanelOpen(!isAiPanelOpen)}
+                className="text-xs px-3 py-1 bg-white border border-indigo-200 hover:border-indigo-400 text-indigo-700 font-bold rounded-lg shadow-3xs cursor-pointer transition-all"
+              >
+                {isAiPanelOpen ? '閉じる' : '開く / 起動'}
+              </button>
+            </div>
+
+            {isAiPanelOpen && (
+              <div className="space-y-4 pt-2 border-t border-indigo-100/65">
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1.5">
+                    ターゲット顧客像 & 提供サービス詳細 (AI入力元)
+                  </label>
+                  <textarea
+                    rows={2}
+                    value={targetAudience}
+                    onChange={(e) => setTargetAudience(e.target.value)}
+                    placeholder="例: 副業や独立を考えている30代・40代の会社員で、本格的な動画編集・SNS集客スキルを習得したい方々。"
+                    className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs text-slate-800 focus:outline-hidden focus:ring-1 focus:ring-indigo-500"
+                  />
+                  <p className="text-[9px] text-slate-400 mt-1">※ターゲット顧客の悩みや年齢層、解決したい課題を細かく入れると、AI設計の精度がより向上します。</p>
+                </div>
+
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] text-slate-450 font-bold">ファネル種類: <strong className="text-indigo-600">{funnelType}</strong></span>
+                  <button
+                    type="button"
+                    onClick={handleGenerateAiBlueprint}
+                    disabled={generatingOutline || !targetAudience.trim()}
+                    className="px-4 py-2 bg-gradient-to-r from-indigo-600 to-teal-600 hover:opacity-95 text-white text-xs font-black rounded-lg shadow-md transition-all disabled:opacity-50 flex items-center gap-1.5 shrink-0 cursor-pointer"
+                  >
+                    {generatingOutline ? (
+                      <>
+                        <svg className="animate-spin h-3.5 w-3.5 text-white" fill="none" viewBox="0 0 24 24">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                        </svg>
+                        <span>設計中...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Sparkles className="h-3.5 w-3.5 text-yellow-200" />
+                        <span>AI設計図を生成</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+
+                {aiError && (
+                  <div className="p-3 bg-red-50 border border-red-200 text-red-800 rounded-xl text-xs font-semibold flex items-center gap-1.5">
+                    <AlertCircle className="h-4 w-4 text-red-600 shrink-0" />
+                    <span>{aiError}</span>
+                  </div>
+                )}
+
+                {aiOutfitData && (
+                  <div className="bg-white rounded-xl border border-indigo-100 p-4 space-y-4 max-h-[300px] overflow-y-auto shadow-inner text-left">
+                    <div className="flex items-center justify-between border-b border-indigo-50/80 pb-2">
+                      <span className="text-xs font-black text-indigo-950 flex items-center gap-1">
+                        ✨ AI推薦設計プラン概要
+                      </span>
+                      <button
+                        type="button"
+                        onClick={handleApplyAiBlueprint}
+                        className="py-1 px-3 bg-teal-50 hover:bg-teal-100 text-teal-800 border border-teal-200 text-[10px] font-black rounded-md flex items-center gap-1 cursor-pointer transition-all"
+                      >
+                        <Check className="h-3 w-3 text-teal-600" />
+                        <span>この設計をプロジェクト枠に適用</span>
+                      </button>
+                    </div>
+
+                    {/* Recommended Steps list */}
+                    <div className="space-y-2">
+                      <span className="text-[10px] text-slate-400 font-extrabold uppercase block tracking-wider">🛠️ 推薦構築ステップ ({aiOutfitData.steps.length}ステージ)</span>
+                      <div className="space-y-1.5">
+                        {aiOutfitData.steps.map((st, sIdx) => (
+                          <div key={sIdx} className="bg-slate-50 border border-slate-150 p-2.5 rounded-lg flex items-start gap-2 text-xs">
+                            <span className="w-5 h-5 bg-indigo-100 text-indigo-850 rounded-full flex items-center justify-center font-mono font-bold shrink-0 text-[10px]">{sIdx + 1}</span>
+                            <div>
+                              <p className="font-bold text-slate-800 text-[11px] leading-tight mb-0.5">{st.name}</p>
+                              <p className="text-[9px] text-slate-500 leading-normal">{st.description}</p>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Copy strategies */}
+                    <div className="space-y-1.5">
+                      <span className="text-[10px] text-slate-400 font-extrabold uppercase block tracking-wider">✍️ 心理コピーライティング・ポイント案</span>
+                      <p className="text-[10px] text-slate-650 bg-slate-50 p-3 rounded-lg border border-slate-150 font-medium leading-relaxed whitespace-pre-wrap">
+                        {aiOutfitData.copyPlaceholders}
+                      </p>
+                    </div>
+
+                    {/* Milestone schedules */}
+                    <div className="space-y-1.5">
+                      <span className="text-[10px] text-slate-400 font-extrabold uppercase block tracking-wider">📅 推薦スケジュール ＆ 注意点</span>
+                      <p className="text-[10px] text-slate-650 bg-slate-50 p-3 rounded-lg border border-slate-150 font-medium leading-relaxed whitespace-pre-wrap">
+                        {aiOutfitData.timeline}
+                      </p>
+                    </div>
+                  </div>
+                )}
+
+                {customAiSteps && customAiSteps.length > 0 && (
+                  <div className="p-3 bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-xl text-xs font-bold leading-normal flex items-start gap-2">
+                    <Check className="h-4.5 w-4.5 text-emerald-650 shrink-0 mt-0.5" />
+                    <div>
+                      <p>AI設計 blueprint の適用に成功しました！</p>
+                      <p className="text-[10px] text-emerald-700 font-normal mt-0.5">
+                        このまま下部の「プロジェクトを作成する」をクリックすると、AIが特別に抽出した全 {customAiSteps.length} ステップの構築タスクとスケジュール、コピー設定が連動して初期搭載されます。
+                      </p>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
 
           {/* Auto Template toggle */}

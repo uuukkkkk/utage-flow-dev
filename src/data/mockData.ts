@@ -4,49 +4,44 @@ export const mockClients: Client[] = [
   {
     id: 'c1',
     name: 'ツバサ教育アカデミー様',
-    industry: 'オンライン受験指導・大学受験',
-    representative: '翼 翔太',
     email: 'contact@tsubasa-academy.test',
+    industry: '教育・受験コンサル',
     phone: '03-1234-5678',
-    createdAt: '2026-01-15',
-    notes: '毎週木曜日の午前10時に定例ミーティングあり。Zoomのリンクは固定。来季の広告予算増額を検討中。'
+    createdAt: '2026-05-10',
+    notes: '個別カウンセリング成約率にこだわりあり。プレミアムコース訴求用に動画特典。'
   },
   {
     id: 'c2',
     name: '木漏れ日ヨガスタジオ様',
-    industry: '店舗・オンラインフィットネスヨガ',
-    representative: '佐々木 明美',
     email: 'info@komorebi-yoga.test',
-    phone: '090-9876-5432',
-    createdAt: '2026-02-10',
-    notes: 'LINE公式アカウントの配色のこだわりが強く、パステルグリーンがメイン色をご希望。マッサージ店とのコラボも企画中。'
+    industry: '店舗・ヘルスケア',
+    phone: '045-987-6543',
+    createdAt: '2026-05-20',
+    notes: 'アコースティックで落ち着いたイメージ。LINE友だち追加による予約動線を徹底。'
   },
   {
     id: 'c3',
     name: 'フロンティアコンサルのプロ様',
-    industry: '起業・経営コンサルティング',
-    representative: '高橋 健一',
-    email: 'takahashi@frontier-consult.test',
+    email: 'support@frontier-pro.test',
+    industry: 'B2Bプロコンサル',
     phone: '06-4321-8765',
-    createdAt: '2026-03-01',
-    notes: '成果報酬型での契約。決済完了後の即時自動LINE返信の設定において、タグ連動が最重要要件。'
+    createdAt: '2026-05-01',
+    notes: '決済の仕組みとして、分割払いStripe登録を完備させたい。'
   },
   {
     id: 'c4',
     name: '和風ハーブティー工房様',
-    industry: 'オーガニック食品・D2C物販',
-    representative: '森川 小百合',
-    email: 'support@wafuu-herb.test',
-    phone: '050-1122-3344',
-    createdAt: '2026-04-18',
-    notes: '商品はすべて国内製造オーガニック。Stripeの明細書表記について念押しあり。'
+    email: 'office@jp-herbtea.test',
+    industry: 'EC・物販',
+    phone: '050-1111-2222',
+    createdAt: '2026-04-10',
+    notes: '定期お届けプラン訴求。小冊子をプレゼントとして同梱して発送する。'
   },
   {
     id: 'c5',
     name: 'ネクストステージ英語教室様',
-    industry: '社会人向けオンライン英語コーチング',
-    representative: '大塚 誠',
-    email: 'otsuka@nextstage-english.test',
+    email: 'hello@nextstage-english.test',
+    industry: '語学スクール',
     phone: '03-5555-6666',
     createdAt: '2026-05-02',
     notes: '会員サイトの使いやすさを重視。スマートフォンでPDF教材が崩れないようにレスポンシブ配置を希望。'
@@ -67,31 +62,11 @@ export const mockTemplates: Template[] = [
   {
     id: 't2',
     name: '【セミナー・説明会】2ステップ決済ファネル',
-    category: 'セミナー集客ファネル',
-    description: '有料／無料オンラインウェビナーへの集客から、サンクスページでのアンケート回収、リマインダーLINE配信、当日の説明会内での決済リンク誘導までを一貫する。',
-    stepsCount: 5,
-    steps: ['1. セミナー募集告知LP', '2. 参加特典・リマインド配信設定', '3. 詳細案内・Zoomリンク送信', '4. セミナー当日本番（決済説明）', '5. 決済完了・会員サイト自動案内'],
-    assignee: '鈴木 雅治',
-    expectedDuration: '4週間'
-  },
-  {
-    id: 't3',
-    name: '【自動ウェビナー】エバーグリーン・ローンチ',
-    category: 'オンラインコンテンツ販売ファネル',
-    description: 'UTAGEの最大強みである「時間連動型の自動ウェビナー」を活用し、見込み客が登録した瞬間からプログラムが連動して毎日決まった時間に価値教育・動画提供を行う超自動化ファネル。',
-    stepsCount: 6,
-    steps: ['1. ウェビナー登録予告LP', '2. 登録直後エバーグリーン開始', '3. 3日間価値教育動画（ステップ配信）', '4. オプション限定セールスページ', '5. 注文決済フォーム・タグ連動', '6. 購入者マイページ（会員サイト）'],
-    assignee: '高橋 健一',
-    expectedDuration: '6週間'
-  },
-  {
-    id: 't4',
-    name: '【リード獲得】無料eBookプレゼントファネル',
-    category: '無料プレゼント配布ファネル',
-    description: '有益な電子書籍や音声ファイルをダウンロードさせることでLINEやメールアドレス高確率に登録してもらい、次のステップへ教育をかける導入用ファネル。',
+    category: 'セミナー決済ファネル',
+    description: '有料オンラインセミナー予約と同時にクレジットカード決済 (Stripe) を完了させ、自動でZoomリンクと確認メールを配信するファネル。',
     stepsCount: 3,
-    steps: ['1. ダウンロードLP', '2. サンクスページ（直後アンケート）', '3. 特典付きステップLINE開始'],
-    assignee: '田中 美咲',
+    steps: ['1. セミナー募集ページ', '2. Stripe決済完了ページ', '3. 参加証・Zoomリンク案内メール'],
+    assignee: '佐藤 広務',
     expectedDuration: '2週間'
   }
 ];
@@ -107,7 +82,7 @@ export const mockProjects: Project[] = [
     startDate: '2026-05-10',
     targetDate: '2026-06-25',
     description: '「オンライン大学受験合格プログラム」の個別カウンセリング（Zoom）に誘導し、高単価プレミアムコースを成約するためのファネル。',
-    revenue: '450,050円',
+    revenue: '450,000円',
     funnelSteps: [
       { id: 'p1-1', name: 'オプトインLP制作（ラフ・素材）', status: '完了', assignee: '佐藤 広務', targetDate: '2026-05-18' },
       { id: 'p1-2', name: '特典PDF用スライド原稿執筆', status: '制作中', assignee: '田中 美咲', targetDate: '2026-06-12' },
@@ -115,7 +90,12 @@ export const mockProjects: Project[] = [
       { id: 'p1-4', name: 'LINE/メール連動ステップ配信設計（5配信分）', status: '未着手', assignee: '鈴木 雅治', targetDate: '2026-06-21' },
       { id: 'p1-5', name: 'リマインド設定＆サンクスページ', status: '未着手', assignee: '田中 美咲', targetDate: '2026-06-25' }
     ],
-    notes: 'メイン講師の動画撮影が6月15日に確定。それまでに原稿をFixさせる。'
+    notes: 'メイン講師の動画撮影が6月15日に確定。それまでに原稿をFixさせる。',
+    historyLogs: [
+      { id: 'h1-1', timestamp: '2026-05-10 10:15', category: 'update_log', author: 'システム管理者', content: 'プロジェクトを初期登録し、ファネルステップのひな形を設定しました。' },
+      { id: 'h1-2', timestamp: '2026-05-12 14:00', category: 'client_request', author: '代表 翼様', content: '「ターゲット層に仕事を持つ保護者層も含まれるため、LPの後半に信頼性データと推薦文のエリアを設けてほしい」とのご要望。' },
+      { id: 'h1-3', timestamp: '2026-05-18 16:30', category: 'meeting_note', author: '佐藤 広務', content: 'オプトインLPの構成決定会議。合格実績グラフをファーストビュー直後に置く方向でクライアント提案し、合意を頂きました。' }
+    ]
   },
   {
     id: 'p2',
@@ -135,7 +115,12 @@ export const mockProjects: Project[] = [
       { id: 'p2-4', name: 'リマインド／フォローアップステップ配信構築', status: '制作中', assignee: '鈴木 雅治', targetDate: '2026-06-10' },
       { id: 'p2-5', name: 'UTAGE独自ドメイン・SSLテスト・通し動作確認', status: '未着手', assignee: '高橋 健一', targetDate: '2026-06-15' }
     ],
-    notes: 'Stripeのテスト決済は成功。LINE公式のAPI連携 and Webhook設定に進む。'
+    notes: 'Stripeのテスト決済は成功。LINE公式のAPI連携 and Webhook設定に進む。',
+    historyLogs: [
+      { id: 'h2-1', timestamp: '2026-05-01 09:30', category: 'update_log', author: 'システム管理者', content: 'プロジェクト「セミナー集客ファネル」を開始しました。' },
+      { id: 'h2-2', timestamp: '2026-05-15 11:20', category: 'client_request', author: '高橋 健一', content: '決済代行はStripeのほか、銀行振込用の案内メッセージもサンクスページに併記したいと、顧客より要望メールを受領。' },
+      { id: 'h2-3', timestamp: '2026-05-28 15:45', category: 'meeting_note', author: '佐藤 広務', content: 'Stripe連携実機テスト合格。決済直後のタグ自動付与とリマインドLINEの連動起動が正常動作することを確認しました。' }
+    ]
   },
   {
     id: 'p3',
@@ -155,7 +140,11 @@ export const mockProjects: Project[] = [
       { id: 'p3-4', name: '体験レッスン自動フォーム予約連携', status: '完了', assignee: '鈴木 雅治', targetDate: '2026-06-05' },
       { id: 'p3-5', name: 'クライアント様全体動作および文章の最終確認', status: '確認中', assignee: '高橋 健一', targetDate: '2026-06-10' }
     ],
-    notes: 'スマホ実機でのLINE登録・動画快適再生テストは良好。クライアントの最終チェック待ち。'
+    notes: 'スマホ実機でのLINE登録・動画快適再生テストは良好。クライアントの最終チェック待ち。',
+    historyLogs: [
+      { id: 'h3-1', timestamp: '2026-05-20 13:00', category: 'update_log', author: 'システム管理者', content: 'プレゼント配布型ファネル構築プロジェクトがキックオフされました。' },
+      { id: 'h3-3', timestamp: '2026-06-01 10:00', category: 'client_request', author: '代表 佐々木様', content: '「自動返信メッセージのトーン＆マナーについて、親しみやすさを最重視して少しフランクな絵文字入りに変更してほしい」とのご相談。文章をすべて改訂反映しました。' }
+    ]
   },
   {
     id: 'p4',
@@ -175,7 +164,10 @@ export const mockProjects: Project[] = [
       { id: 'p4-4', name: '段階的（ドリップ）公開スケジュール設定', status: '未着手', assignee: '鈴木 雅治', targetDate: '2026-07-12' },
       { id: 'p4-5', name: '購入時オートタグ追加・購入後メール自動化設定', status: '未着手', assignee: '佐藤 広務', targetDate: '2026-07-20' }
     ],
-    notes: 'UTAGEの会員サイトはパスワードレスやログインセキュリティが非常に優秀なので、そこに動画教材24講義を配置していく。'
+    notes: 'UTAGEの会員サイトはパスワードレスやログインセキュリティが非常に優秀なので、そこに動画教材24講義を配置していく。',
+    historyLogs: [
+      { id: 'h4-1', timestamp: '2026-06-01 11:00', category: 'update_log', author: '鈴木 雅治', content: '英語教室様の会員制サイト兼ドリップ販売ファネルの新規要件を初期インプットしました。' }
+    ]
   },
   {
     id: 'p5',
@@ -195,7 +187,11 @@ export const mockProjects: Project[] = [
       { id: 'p5-4', name: '商品発送管理タグ連動', status: '完了', assignee: '鈴木 雅治', targetDate: '2026-05-08' },
       { id: 'p5-5', name: '自動フォローアップLINE（計7回）', status: '完了', assignee: '田中 美咲', targetDate: '2026-05-15' }
     ],
-    notes: '現在稼働中。登録数250件/月、アップセル転換率18%と好調に推移中。'
+    notes: '現在稼働中。登録数250件/月、アップセル転換率18%と好調に推移中。',
+    historyLogs: [
+      { id: 'h5-1', timestamp: '2026-04-10 10:00', category: 'update_log', author: '田中 美咲', content: '無事初期LPセットアップを開始。' },
+      { id: 'h5-2', timestamp: '2026-05-15 18:00', category: 'update_log', author: 'システム管理者', content: 'ドメイン紐づけ完了の上、一般広告配信用に本番リリースを行いました。' }
+    ]
   }
 ];
 
@@ -233,4 +229,3 @@ export const mockTeamMembers: TeamMember[] = [
     googleConnected: false,
   }
 ];
-

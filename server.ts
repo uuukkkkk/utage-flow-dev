@@ -131,6 +131,81 @@ Generate high-performance marketing copy, email follow-up sequence draft, and re
   }
 });
 
+// 3. API: Generate Complete Funnel Outline using Gemini 3.5 Flash
+app.post("/api/generate-funnel-outline", async (req, res) => {
+  try {
+    const { targetAudience, funnelType } = req.body;
+
+    if (!targetAudience || !funnelType) {
+      return res.status(400).json({ error: "targetAudience and funnelType are required." });
+    }
+
+    const ai = getGeminiClient();
+
+    const systemPrompt = `You are a world-class UTAGE Conversion Marketing Strategist.
+Given a Target Audience and Funnel Type, formulate a comprehensive conversion project blueprint in Japanese.
+Generate:
+1. Recommended custom funnel steps (typically 4-6 specific stages appropriate for the niche).
+2. Copywriting strategy & placeholders (catchy headline templates and sub-headline recommendations).
+3. Estimated timelines & Milestones (realistic setup schedules over a 4-to-6-week timeline).
+
+Output the answer using strict JSON format matching the schema. All fields MUST be written in Japanese.`;
+
+    const userPrompt = `
+=== BLUEPRINT DIRECTIVES ===
+Target Audience: ${targetAudience}
+Funnel Type: ${funnelType}
+
+Generate custom steps, copy placeholders, and a week-by-week timeline. Ensure they are optimized specifically for the UTAGE funnel platform (such as integration with Stripe payments, autoresponder emails, or line/mail steps).
+`;
+
+    const response = await ai.models.generateContent({
+      model: "gemini-3.5-flash",
+      contents: userPrompt,
+      config: {
+        systemInstruction: systemPrompt,
+        responseMimeType: "application/json",
+        responseSchema: {
+          type: Type.OBJECT,
+          properties: {
+            steps: {
+              type: Type.ARRAY,
+              items: {
+                type: Type.OBJECT,
+                properties: {
+                  name: { type: Type.STRING, description: "Name of the step (e.g. 'LPオプトインページ', '個別カウンセリング申込フォーム')" },
+                  description: { type: Type.STRING, description: "What needs to be implemented/created in this step." }
+                },
+                required: ["name", "description"]
+              },
+              description: "Array of recommended funnel steps."
+            },
+            copyPlaceholders: {
+              type: Type.STRING,
+              description: "Marketing copy headlines, psychological triggers, and bullet placeholders for the pages."
+            },
+            timeline: {
+              type: Type.STRING,
+              description: "Recommended weekly milestone schedule (e.g., Week 1: copy, Week 2: design, Week 3: forms and webhooks, Week 4: deployment & test)."
+            }
+          },
+          required: ["steps", "copyPlaceholders", "timeline"]
+        }
+      }
+    });
+
+    const resultText = response.text || "{}";
+    const data = JSON.parse(resultText);
+    res.json(data);
+
+  } catch (error: any) {
+    console.error("Gemini Outline Generation Error:", error);
+    res.status(505).json({
+      error: error.message || "Failed to generate funnel outline blueprint."
+    });
+  }
+});
+
 // Setup Vite Dev Server / Static Asset Flow
 async function initServer() {
   if (process.env.NODE_ENV !== "production") {

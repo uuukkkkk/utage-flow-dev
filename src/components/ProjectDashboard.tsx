@@ -3,7 +3,8 @@ import {
   Project, 
   Client, 
   FunnelType, 
-  ProjectStatus 
+  ProjectStatus,
+  AutomationLog
 } from '../types';
 import { 
   Plus, 
@@ -34,6 +35,8 @@ import {
   Webhook
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
+import AutomationLogsView from './AutomationLogsView';
+
 
 interface ProjectDashboardProps {
   projects: Project[];
@@ -56,6 +59,76 @@ export default function ProjectDashboard({
   
   // Dashboard view toggle: 'grid' (traditional bento) or 'kanban'
   const [viewMode, setViewMode] = useState<'grid' | 'kanban'>('grid');
+
+  // Tab selection: 'projects' | 'logs'
+  const [dashboardTab, setDashboardTab] = useState<'projects' | 'logs'>('projects');
+
+  // Centering Automation sync logs entries
+  const [automationLogs, setAutomationLogs] = useState<AutomationLog[]>([
+    {
+      id: "log-1",
+      action: "UTAGE API Sync - Steps Update",
+      statusCode: 200,
+      status: "success",
+      timestamp: "2026-06-10 08:01:15",
+      message: "ツバサ教育アカデミー様：プロジェクト進捗を35%（特典送付・価値教育メール設定）に同期しました。",
+      details: "{\n  \"action\": \"sync_status\",\n  \"client\": \"ツバサ教育アカデミー様\",\n  \"progress\": 35,\n  \"stage\": \"原稿執筆中\",\n  \"status_code\": 200\n}"
+    },
+    {
+      id: "log-2",
+      action: "Webhook Sync Trigger",
+      statusCode: 200,
+      status: "success",
+      timestamp: "2026-06-10 07:42:30",
+      message: "木漏れ日ヨガスタジオ様：LINE自動友だち追加時応答Webhook受信。タグ『体験会案内配信中』を付与完了。",
+      details: "{\n  \"event\": \"line.follow\",\n  \"client_id\": \"c2\",\n  \"tag_applied\": \"体験会案内配信中\",\n  \"webhook_status\": \"success\"\n}"
+    },
+    {
+      id: "log-3",
+      action: "Stripe Webhook Sync",
+      statusCode: 201,
+      status: "success",
+      timestamp: "2026-06-09 23:45:10",
+      message: "フロンティアコンサルのプロ様：決済Webhook受信。金額 600,000円 の領収・メンバーシップ自動招待に成功しました。",
+      details: "{\n  \"payment_provider\": \"Stripe\",\n  \"amount\": 600000,\n  \"currency\": \"jpy\",\n  \"user_notified\": true\n}"
+    },
+    {
+      id: "log-4",
+      action: "UTAGE API Connection Handshake",
+      statusCode: 200,
+      status: "success",
+      timestamp: "2026-06-09 21:14:02",
+      message: "接続確認成功：Stripe決済・UTAGE Webhook疎通テストに成功しました。",
+      details: "{\n  \"api_endpoint\": \"https://dots-direction.utage.biz/api/v1/auth\",\n  \"handshake\": \"OK\"\n}"
+    },
+    {
+      id: "log-5",
+      action: "ドリップ配信公開スケジュール同期",
+      statusCode: 200,
+      status: "success",
+      timestamp: "2026-06-09 18:32:45",
+      message: "ネクストステージ英語教室様：マイページ会員コンテンツの「順次ドリップスケジュール配信」情報の同期が完了しました。",
+      details: "{\n  \"sync_type\": \"drip_schedule\",\n  \"lessons\": 24,\n  \"membership_tiers\": [\"Standard\", \"Gold\"]\n}"
+    },
+    {
+      id: "log-6",
+      action: "SSL Domain Handshake",
+      statusCode: 401,
+      status: "warning",
+      timestamp: "2026-06-08 14:20:11",
+      message: "外部ドメイン連携警告：提供されたUTAGEサブドメイン[dots-direction.utage.biz]へのSSLセキュリティ認証キーの有効期限が24時間以内に切れる可能性があります。自動更新ジョブを確認してください。",
+      details: "{\n  \"domain\": \"dots-direction.utage.biz\",\n  \"ssl_provider\": \"Let's Encrypt\",\n  \"days_remaining\": 1\n}"
+    },
+    {
+      id: "log-7",
+      action: "UTAGE API Form Validation Error",
+      statusCode: 500,
+      status: "error",
+      timestamp: "2026-06-07 11:30:15",
+      message: "同期失敗：和風ハーブティー工房様の決済フォームタグ連動処理中にDNSタイムアウトが発生しました。UTAGEサブドメイン検証を再試行します。",
+      details: "{\n  \"error_code\": \"ERR_DNS_TIMEOUT\",\n  \"target_url\": \"https://wafuu-herb.utage.biz/api/v1/forms\",\n  \"retries_remaining\": 3\n}"
+    }
+  ]);
 
   // UTAGE Sync modal states
   const [isUtageSyncOpen, setIsUtageSyncOpen] = useState(false);
@@ -118,6 +191,29 @@ export default function ProjectDashboard({
       status: newStatus,
       progress: nextProgress
     });
+
+    // Create dynamic automation sync log entry
+    const now = new Date();
+    const timeStr = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}:${String(now.getSeconds()).padStart(2, '0')}`;
+    const newLog: AutomationLog = {
+      id: `log-${Date.now()}`,
+      projectId: projectId,
+      projectName: project.clientName,
+      action: 'プロジェクトステータス同期',
+      statusCode: 200,
+      status: 'success',
+      timestamp: timeStr,
+      message: `${project.clientName}：進捗ステータスを「${newStatus}」に自動同期完了 (${nextProgress}%)。`,
+      details: JSON.stringify({
+        event: "project_status_sync",
+        client_id: project.clientId,
+        client_name: project.clientName,
+        new_status: newStatus,
+        progress: nextProgress,
+        sync_method: "automatic_rest_pipe"
+      }, null, 2)
+    };
+    setAutomationLogs(prev => [newLog, ...prev]);
   };
 
   // Drag handles
@@ -173,6 +269,25 @@ export default function ProjectDashboard({
               `${timeStr} - 同期成功 - リスト・LPステップ自動マッピング更新`,
               ...prev
             ]);
+
+            // Prepend a log to the Automation Logs state as well
+            const manualSyncLog: AutomationLog = {
+              id: `log-${Date.now()}`,
+              action: '手動一括API同期',
+              statusCode: 200,
+              status: 'success',
+              timestamp: timeStr,
+              message: `手動一括同期成功：接続先 [${utageSubdomain}.utage.biz] のリスト及びLPアセット(${projects.length}件分)の自動構成マッピングを正常同期しました。`,
+              details: JSON.stringify({
+                api_trigger: "user_manual_dashboard_click",
+                subdomain: utageSubdomain,
+                status_code: 200,
+                ssl_secured: true,
+                records_extracted: projects.length,
+                timestamp: timeStr
+              }, null, 2)
+            };
+            setAutomationLogs(prev => [manualSyncLog, ...prev]);
           }, 800);
         }, 800);
       }, 700);
@@ -282,8 +397,46 @@ export default function ProjectDashboard({
         </div>
       </div>
 
-      {/* Global Toolbar and Filter / Search Area */}
-      <div className="bg-white px-5 py-4 rounded-2xl border border-slate-200/80 shadow-xs flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+      {/* Tab Switcher */}
+      <div className="border-b border-slate-200/80 flex items-center space-x-1">
+        <button
+          onClick={() => setDashboardTab('projects')}
+          className={`px-4.5 py-3 text-xs font-extrabold border-b-2 transition-all cursor-pointer flex items-center gap-2 ${
+            dashboardTab === 'projects'
+              ? 'border-indigo-600 text-indigo-600'
+              : 'border-transparent text-slate-500 hover:text-slate-800 hover:border-slate-350'
+          }`}
+        >
+          <Briefcase className="h-4 w-4" />
+          <span>案件進捗ダッシュボード</span>
+        </button>
+        <button
+          id="tab-automation-logs"
+          onClick={() => setDashboardTab('logs')}
+          className={`px-4.5 py-3 text-xs font-extrabold border-b-2 transition-all cursor-pointer flex items-center gap-2 relative ${
+            dashboardTab === 'logs'
+              ? 'border-indigo-600 text-indigo-600'
+              : 'border-transparent text-slate-500 hover:text-slate-800 hover:border-slate-350'
+          }`}
+        >
+          <Activity className="h-4 w-4 text-rose-500" />
+          <span>常時連携同期ログ (Automation Logs)</span>
+          <span className="px-1.5 py-0.5 text-[9px] font-bold font-mono bg-indigo-100 text-indigo-700 rounded-full">
+            {automationLogs.length}
+          </span>
+          {automationLogs.some(log => log.status === 'error') && (
+            <span className="absolute top-2 right-1.5 flex h-1.5 w-1.5 font-sans">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-rose-550"></span>
+            </span>
+          )}
+        </button>
+      </div>
+
+      {dashboardTab === 'projects' ? (
+        <>
+          {/* Global Toolbar and Filter / Search Area */}
+          <div className="bg-white px-5 py-4 rounded-2xl border border-slate-200/80 shadow-xs flex flex-col lg:flex-row lg:items-center justify-between gap-4">
         {/* Search and Filters */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3 flex-1">
           {/* Quick Search */}
@@ -639,6 +792,15 @@ export default function ProjectDashboard({
             })}
           </div>
         </div>
+      )}
+        </>
+      ) : (
+        <AutomationLogsView 
+          logs={automationLogs}
+          onAddLog={(newLog) => setAutomationLogs(prev => [newLog, ...prev])}
+          onClearLogs={() => setAutomationLogs([])}
+          projects={projects}
+        />
       )}
 
       {/* ================= UTAGE ADVANCED AUTOSYNC PORTAL MODAL ================= */}

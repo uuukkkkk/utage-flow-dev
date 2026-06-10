@@ -43,6 +43,14 @@ export interface Client {
   notes?: string;
 }
 
+export interface ProjectHistoryLog {
+  id: string;
+  timestamp: string;
+  category: 'client_request' | 'meeting_note' | 'update_log';
+  author: string;
+  content: string;
+}
+
 export interface Project {
   id: string;
   clientId: string;
@@ -56,6 +64,7 @@ export interface Project {
   funnelSteps: FunnelStep[];
   notes?: string;
   revenue?: string; // Estimated budget / value
+  historyLogs?: ProjectHistoryLog[];
 }
 
 export interface Template {
@@ -68,3 +77,16 @@ export interface Template {
   assignee?: string;
   expectedDuration?: string;
 }
+
+export interface AutomationLog {
+  id: string;
+  projectId?: string;
+  projectName?: string;
+  action: string;
+  statusCode: number;
+  status: 'success' | 'error' | 'warning';
+  timestamp: string;
+  message: string;
+  details?: string;
+}
+
