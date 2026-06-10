@@ -5,6 +5,7 @@ import ClientList from './components/ClientList';
 import TemplateList from './components/TemplateList';
 import SettingsView from './components/Settings';
 import ProjectDetailModal from './components/ProjectDetailModal';
+import ProjectDetailView from './components/ProjectDetailView';
 import NewProjectModal from './components/NewProjectModal';
 import AnalysisView from './components/AnalysisView';
 import TeamManagement from './components/TeamManagement';
@@ -66,6 +67,7 @@ export default function App() {
   // Modal Control States
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [selectedDetailedProject, setSelectedDetailedProject] = useState<Project | null>(null);
+  const [selectedProjectIdForView, setSelectedProjectIdForView] = useState<string | null>(mockProjects[0]?.id || null);
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
 
   // Add project handler
@@ -126,6 +128,18 @@ export default function App() {
             onOpenAddModal={() => setIsAddModalOpen(true)}
             onOpenDetailModal={handleOpenDetailModal}
             onUpdateProject={handleUpdateProject}
+          />
+        );
+      case 'project-detail':
+        return (
+          <ProjectDetailView 
+            projects={projects}
+            selectedProjectId={selectedProjectIdForView}
+            onSelectProject={setSelectedProjectIdForView}
+            onUpdateProject={handleUpdateProject}
+            onDeleteProject={handleDeleteProject}
+            members={members}
+            clients={clients}
           />
         );
       case 'clients':
@@ -193,6 +207,7 @@ export default function App() {
             <span className="text-slate-300">/</span>
             <span className="text-sm font-bold text-slate-700">
               {activeTab === 'projects' ? 'プロジェクト管理' :
+               activeTab === 'project-detail' ? '案件詳細ワークスペース' :
                activeTab === 'clients' ? '顧客一覧' :
                activeTab === 'analysis' ? '分析・統計ダッシュボード' :
                activeTab === 'team' ? '組織・専属メンバー' :
@@ -270,6 +285,12 @@ export default function App() {
             members={members}
             onUpdateProject={handleUpdateProject}
             onDeleteProject={handleDeleteProject}
+            onOpenDetailView={(id) => {
+              setSelectedProjectIdForView(id);
+              setActiveTab('project-detail');
+              setIsDetailModalOpen(false);
+              setSelectedDetailedProject(null);
+            }}
           />
         )}
       </AnimatePresence>

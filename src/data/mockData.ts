@@ -3,7 +3,8 @@ import { Client, Project, Template, TeamMember } from '../types';
 export const mockClients: Client[] = [
   {
     id: 'c1',
-    name: 'ツバサ教育アカデミー様',
+    name: 'ツバサ education アカデミー様',
+    representative: '翼 翔太',
     email: 'contact@tsubasa-academy.test',
     industry: '教育・受験コンサル',
     phone: '03-1234-5678',
@@ -13,6 +14,7 @@ export const mockClients: Client[] = [
   {
     id: 'c2',
     name: '木漏れ日ヨガスタジオ様',
+    representative: '山田 優佳',
     email: 'info@komorebi-yoga.test',
     industry: '店舗・ヘルスケア',
     phone: '045-987-6543',
@@ -22,6 +24,7 @@ export const mockClients: Client[] = [
   {
     id: 'c3',
     name: 'フロンティアコンサルのプロ様',
+    representative: '前田 健吾',
     email: 'support@frontier-pro.test',
     industry: 'B2Bプロコンサル',
     phone: '06-4321-8765',
@@ -31,6 +34,7 @@ export const mockClients: Client[] = [
   {
     id: 'c4',
     name: '和風ハーブティー工房様',
+    representative: '鈴木 雅巳',
     email: 'office@jp-herbtea.test',
     industry: 'EC・物販',
     phone: '050-1111-2222',
@@ -40,11 +44,12 @@ export const mockClients: Client[] = [
   {
     id: 'c5',
     name: 'ネクストステージ英語教室様',
+    representative: 'マイケル・ジャクソン',
     email: 'hello@nextstage-english.test',
     industry: '語学スクール',
     phone: '03-5555-6666',
     createdAt: '2026-05-02',
-    notes: '会員サイトの使いやすさを重視。スマートフォンでPDF教材が崩れないようにレスポンシブ配置を希望。'
+    notes: '会員サイト of ツバサ user requirements.'
   }
 ];
 
@@ -62,7 +67,7 @@ export const mockTemplates: Template[] = [
   {
     id: 't2',
     name: '【セミナー・説明会】2ステップ決済ファネル',
-    category: 'セミナー決済ファネル',
+    category: 'セミナー集客ファネル',
     description: '有料オンラインセミナー予約と同時にクレジットカード決済 (Stripe) を完了させ、自動でZoomリンクと確認メールを配信するファネル。',
     stepsCount: 3,
     steps: ['1. セミナー募集ページ', '2. Stripe決済完了ページ', '3. 参加証・Zoomリンク案内メール'],

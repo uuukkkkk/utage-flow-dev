@@ -436,7 +436,7 @@ export default function ProjectDashboard({
       {dashboardTab === 'projects' ? (
         <>
           {/* Global Toolbar and Filter / Search Area */}
-          <div className="bg-white px-5 py-4 rounded-2xl border border-slate-200/80 shadow-xs flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+          <div className="bg-white px-5 py-4 rounded-2xl border border-slate-150 shadow-[0_2px_6px_rgba(0,0,0,0.02)] flex flex-col lg:flex-row lg:items-center justify-between gap-4">
         {/* Search and Filters */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3 flex-1">
           {/* Quick Search */}
@@ -517,7 +517,7 @@ export default function ProjectDashboard({
           {mainFeaturedProject ? (
             <div 
               onClick={() => onOpenDetailModal(mainFeaturedProject)}
-              className="md:col-span-4 md:row-span-2 bg-white rounded-3xl border border-slate-200/80 p-6 flex flex-col justify-between shadow-xs hover:shadow-md transition-all duration-200 cursor-pointer min-h-[350px] relative overflow-hidden"
+              className="md:col-span-4 md:row-span-2 bg-white rounded-3xl border border-slate-200/60 p-6 flex flex-col justify-between shadow-[0_2px_8px_-2px_rgba(0,0,0,0.03),0_1px_2px_rgba(0,0,0,0.02)] hover:shadow-[0_20px_40px_-4px_rgba(99,102,241,0.09),0_4px_16px_-2px_rgba(0,0,0,0.03)] hover:-translate-y-1 hover:border-indigo-300/80 transition-all duration-300 cursor-pointer min-h-[350px] relative overflow-hidden"
             >
               <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-500/5 rounded-full blur-2xl" />
               <div>
@@ -579,7 +579,7 @@ export default function ProjectDashboard({
           )}
 
           {/* Bento metric total box */}
-          <div className="md:col-span-2 bg-indigo-950 text-white rounded-3xl p-6 shadow-md flex flex-col justify-between relative overflow-hidden">
+          <div className="md:col-span-2 bg-indigo-950 text-white rounded-3xl p-6 shadow-[0_4px_20px_-2px_rgba(15,23,42,0.12)] hover:shadow-[0_20px_40px_-5px_rgba(15,23,42,0.25)] hover:-translate-y-1 hover:border-indigo-800 transition-all duration-300 flex flex-col justify-between relative overflow-hidden border border-indigo-900">
             <div className="absolute -right-6 -bottom-6 w-24 h-24 bg-indigo-500/10 rounded-full blur-xl" />
             <div>
               <p className="text-indigo-400 text-[10px] font-extrabold uppercase tracking-widest">全アサイン済案件数</p>
@@ -599,7 +599,7 @@ export default function ProjectDashboard({
           </div>
 
           {/* Quick Action Bento Panel */}
-          <div className="md:col-span-2 bg-[#0f172a] text-white rounded-3xl p-6 flex flex-col justify-between border border-slate-850 shadow-sm">
+          <div className="md:col-span-2 bg-[#0f172a] text-white rounded-3xl p-6 flex flex-col justify-between border border-slate-800/80 shadow-[0_4px_20px_-2px_rgba(15,23,42,0.12)] hover:shadow-[0_20px_40px_-5px_rgba(15,23,42,0.25)] hover:-translate-y-1 transition-all duration-300">
             <div>
               <div className="flex items-center justify-between mb-2">
                 <span className="text-[9px] text-teal-400 font-extrabold tracking-widest uppercase">STAGE BLUEPRINTS</span>
@@ -621,7 +621,7 @@ export default function ProjectDashboard({
             <div
               key={project.id}
               onClick={() => onOpenDetailModal(project)}
-              className="md:col-span-2 bg-white rounded-3xl border border-slate-200/80 p-5 shadow-xs hover:shadow-md transition-all duration-150 cursor-pointer flex flex-col justify-between h-[210px]"
+              className="md:col-span-2 bg-white rounded-3xl border border-slate-200/60 p-5 shadow-[0_2px_8px_-2px_rgba(0,0,0,0.03),0_1px_2px_rgba(0,0,0,0.02)] hover:shadow-[0_16px_36px_-4px_rgba(99,102,241,0.08),0_4px_12px_-2px_rgba(0,0,0,0.02)] hover:-translate-y-1 hover:border-indigo-300/80 transition-all duration-300 cursor-pointer flex flex-col justify-between h-[210px]"
             >
               <div>
                 <div className="flex justify-between items-start gap-2 mb-2">
@@ -710,7 +710,7 @@ export default function ProjectDashboard({
                         key={project.id}
                         draggable
                         onDragStart={(e) => handleDragStart(e, project.id)}
-                        className="bg-white rounded-xl border border-slate-150 p-3 shadow-xs hover:shadow-md transition-all cursor-grab active:cursor-grabbing hover:border-indigo-200 group relative block"
+                        className="bg-white rounded-xl border border-slate-150/80 p-3.5 shadow-[0_1px_3px_rgba(0,0,0,0.02),0_1px_2px_rgba(0,0,0,0.01)] hover:shadow-[0_12px_24px_-4px_rgba(99,102,241,0.06),0_4px_12px_-2px_rgba(0,0,0,0.02)] hover:-translate-y-0.5 hover:border-indigo-250 transition-all duration-300 cursor-grab active:cursor-grabbing group relative block"
                       >
                         {/* Interactive Drag Handle Overlay hint for UX */}
                         <div className="flex items-start justify-between gap-1.5 mb-1.5">

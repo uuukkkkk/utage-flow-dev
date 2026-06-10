@@ -23,6 +23,7 @@ interface SidebarProps {
 export default function Sidebar({ activeTab, setActiveTab, isOpen, setIsOpen }: SidebarProps) {
   const menuItems = [
     { id: 'projects', label: 'プロジェクト管理', icon: FolderKanban },
+    { id: 'project-detail', label: '案件詳細ワークスペース', icon: Workflow },
     { id: 'clients', label: '顧客一覧', icon: Contact },
     { id: 'analysis', label: '分析・統計', icon: TrendingUp },
     { id: 'team', label: '組織・メンバー', icon: UserCheck },

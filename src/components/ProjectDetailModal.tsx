@@ -35,6 +35,7 @@ interface ProjectDetailModalProps {
   onUpdateProject: (updatedProj: Project) => void;
   onDeleteProject: (projectId: string) => void;
   members: TeamMember[];
+  onOpenDetailView?: (projectId: string) => void;
 }
 
 export default function ProjectDetailModal({ 
@@ -43,7 +44,8 @@ export default function ProjectDetailModal({
   onClose, 
   onUpdateProject,
   onDeleteProject,
-  members
+  members,
+  onOpenDetailView
 }: ProjectDetailModalProps) {
   const [status, setStatus] = useState<ProjectStatus>('原稿執筆中');
   const [description, setDescription] = useState('');
@@ -390,12 +392,23 @@ ${aiGeneratedData.emailBody}
             <p className="text-[10px] text-indigo-400 font-extrabold uppercase tracking-widest">{project.funnelType}</p>
             <h3 className="text-xl font-bold tracking-tight mt-0.5">{project.clientName}</h3>
           </div>
-          <button
-            onClick={onClose}
-            className="p-1.5 rounded-xl hover:bg-slate-800 text-slate-400 hover:text-slate-100 transition-colors cursor-pointer"
-          >
-            <X className="h-5 w-5" />
-          </button>
+          <div className="flex items-center space-x-3">
+            {onOpenDetailView && (
+              <button
+                type="button"
+                onClick={() => onOpenDetailView(project.id)}
+                className="hidden sm:flex items-center gap-1.5 px-3.5 py-1.5 bg-gradient-to-r from-indigo-500 to-indigo-600 hover:opacity-95 text-white rounded-xl text-xs font-black transition-all shadow-md shadow-indigo-500/10 cursor-pointer"
+              >
+                <span>🖥️ Widescreen詳細ワークスペースで開く</span>
+              </button>
+            )}
+            <button
+              onClick={onClose}
+              className="p-1.5 rounded-xl hover:bg-slate-800 text-slate-400 hover:text-slate-100 transition-colors cursor-pointer"
+            >
+              <X className="h-5 w-5" />
+            </button>
+          </div>
         </div>
 
         {/* Content Body Scrollable */}
