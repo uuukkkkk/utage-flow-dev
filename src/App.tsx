@@ -5,7 +5,7 @@ import ClientList from './components/ClientList';
 import TemplateList from './components/TemplateList';
 import SettingsView from './components/Settings';
 import ProjectDetailModal from './components/ProjectDetailModal';
-import ProjectDetailView from './components/ProjectDetailView';
+import ProjectDetailView, { parseDeadlineStatus } from './components/ProjectDetailView';
 import GuideView from './components/GuideView';
 import NewProjectModal from './components/NewProjectModal';
 import AnalysisView from './components/AnalysisView';
@@ -13,7 +13,7 @@ import TeamManagement from './components/TeamManagement';
 import { mockClients, mockProjects, mockTemplates, mockTeamMembers } from './data/mockData';
 import { Project, Client, ProjectStatus, Template, TeamMember, UserRole } from './types';
 import { motion, AnimatePresence } from 'motion/react';
-import { LayoutDashboard, Users, Workflow, Settings as SettingsIcon, Bell } from 'lucide-react';
+import { LayoutDashboard, Users, Workflow, Settings as SettingsIcon, Bell, AlertTriangle, CheckCircle2, Clock, Calendar } from 'lucide-react';
 
 export default function App() {
   const [activeTab, setActiveTab] = useState('projects');
@@ -70,6 +70,25 @@ export default function App() {
   const [selectedDetailedProject, setSelectedDetailedProject] = useState<Project | null>(null);
   const [selectedProjectIdForView, setSelectedProjectIdForView] = useState<string | null>(null);
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
+
+  // Notification Flyout/Dropdown States
+  const [isNotificationOpen, setIsNotificationOpen] = useState(false);
+
+  // Dynamically computed overdue/urgent milestone signals based on progress & dates
+  const urgentTasks = projects.flatMap(proj => {
+    return (proj.funnelSteps || [])
+      .filter(step => step.status !== '完了')
+      .map(step => {
+        // Calculate status relative to current基準日 2026-06-10
+        const dStat = parseDeadlineStatus(step.targetDate, step.status);
+        return {
+          ...step,
+          project: proj,
+          dStat
+        };
+      })
+      .filter(item => item.dStat.isNear);
+  });
 
   // Add project handler
   const handleAddProject = (newProjData: Omit<Project, 'id' | 'progress'> & { id?: string, progress?: number }) => {
@@ -228,12 +247,107 @@ export default function App() {
             </span>
 
             {/* Notification alert badge */}
-            <div className="relative cursor-pointer p-1.5 rounded-lg hover:bg-slate-100 transition-colors">
-              <span className="absolute top-1 right-1 flex h-2 w-2">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-2 w-2 bg-rose-500"></span>
-              </span>
-              <Bell className="h-5 w-5 text-slate-500" />
+            <div className="relative">
+              <button 
+                type="button"
+                onClick={() => setIsNotificationOpen(!isNotificationOpen)}
+                className="relative cursor-pointer p-1.5 rounded-lg hover:bg-slate-100 transition-colors focus:outline-none"
+                aria-label="通知センター"
+              >
+                {urgentTasks.length > 0 && (
+                  <span className="absolute top-1 right-1 flex h-2.5 w-2.5">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-rose-500"></span>
+                  </span>
+                )}
+                <Bell className="h-5 w-5 text-slate-500" />
+              </button>
+
+              {/* Notification dropdown */}
+              {isNotificationOpen && (
+                <>
+                  {/* Backdrop overlay for closing */}
+                  <div 
+                    className="fixed inset-0 z-40 cursor-default" 
+                    onClick={() => setIsNotificationOpen(false)}
+                  />
+                  <div className="absolute right-0 mt-2.5 w-80 sm:w-96 bg-white rounded-2xl border border-slate-200/90 shadow-xl py-3.5 z-50 animate-fade-in origin-top-right">
+                    <div className="px-4 pb-3 border-b border-slate-100 flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <span className="w-2.5 h-2.5 rounded-full bg-rose-500 animate-pulse" />
+                        <h4 className="text-xs font-extrabold text-slate-900 tracking-tight">
+                          リアルタイムマイルストーン警告
+                        </h4>
+                      </div>
+                      <span className={`px-2 py-0.5 rounded-full text-[10px] font-black ${
+                        urgentTasks.length > 0 ? 'bg-rose-50 text-rose-600 border border-slate-100' : 'bg-emerald-50 text-emerald-600 border border-emerald-100'
+                      }`}>
+                        未処理 {urgentTasks.length} 件
+                      </span>
+                    </div>
+
+                    <div className="max-h-[320px] overflow-y-auto divide-y divide-slate-50">
+                      {urgentTasks.length > 0 ? (
+                        urgentTasks.map((task) => {
+                          const { dStat } = task;
+                          return (
+                            <div 
+                              key={task.id}
+                              onClick={() => {
+                                setSelectedProjectIdForView(task.project.id);
+                                setActiveTab('project-detail');
+                                setIsNotificationOpen(false);
+                              }}
+                              className="px-4 py-3 hover:bg-slate-50/85 transition-colors cursor-pointer text-left space-y-1.5"
+                            >
+                              <div className="flex items-start justify-between gap-1.5">
+                                <span className="text-[11.5px] font-black text-slate-800 leading-snug">
+                                  {task.name}
+                                </span>
+                                <span className={`px-1.5 py-0.5 rounded text-[8.5px] font-black shrink-0 ${
+                                  dStat.isOverdue ? 'bg-rose-100 text-rose-700' : 'bg-amber-100 text-amber-800'
+                                }`}>
+                                  {dStat.label}
+                                </span>
+                              </div>
+                              <div className="flex items-center justify-between gap-1 text-[10px] text-slate-500">
+                                <span>
+                                  案件: <strong className="text-slate-700 font-bold">{task.project.name}</strong> ({task.project.clientName})
+                                </span>
+                                <span className="font-semibold text-slate-400">
+                                  担当: {task.assignee || '未アサイン'}
+                                </span>
+                              </div>
+                            </div>
+                          );
+                        })
+                      ) : (
+                        <div className="py-8 px-4 text-center space-y-2">
+                          <div className="mx-auto w-10 h-10 rounded-full bg-emerald-50 flex items-center justify-center text-emerald-600">
+                            <CheckCircle2 className="h-5 w-5" />
+                          </div>
+                          <p className="text-[11.5px] font-black text-slate-700">期限超過や警告マイルストーンはありません。</p>
+                          <p className="text-[10px] text-slate-400 font-semibold leading-normal">基準日（2026年6月10日）ベースの判定はすべて正常です。</p>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Footer link to switch screen */}
+                    <div className="px-4 pt-3.5 border-t border-slate-100 text-center">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setActiveTab('project-detail');
+                          setIsNotificationOpen(false);
+                        }}
+                        className="text-[10.5px] font-black text-indigo-600 hover:text-indigo-800 cursor-pointer block w-full text-center hover:underline"
+                      >
+                        案件詳細ワークスペースですべて確認する →
+                      </button>
+                    </div>
+                  </div>
+                </>
+              )}
             </div>
 
             {/* Language indicator / simple label */}
