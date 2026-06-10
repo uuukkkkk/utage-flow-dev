@@ -9,14 +9,14 @@ import {
   Sparkles, 
   Compass, 
   Lightbulb, 
-  Workflow, 
   User, 
   Clock, 
   Save, 
-  Check, 
-  AlertCircle 
+  AlertCircle,
+  Lock,
+  Unlock
 } from 'lucide-react';
-import { motion, AnimatePresence } from 'motion/react';
+import { motion } from 'motion/react';
 import { Template, FunnelType } from '../types';
 
 interface TemplateListProps {
@@ -24,6 +24,7 @@ interface TemplateListProps {
   onAddTemplate: (newTemplate: Omit<Template, 'id' | 'stepsCount'> & { steps: string[] }) => void;
   onUpdateTemplate: (updatedTemplate: Template) => void;
   onDeleteTemplate: (templateId: string) => void;
+  simulatedPlan?: 'Starter' | 'Pro' | 'Platinum';
 }
 
 const CATEGORIES: FunnelType[] = [
@@ -34,11 +35,18 @@ const CATEGORIES: FunnelType[] = [
   'オンラインコンテンツ販売ファネル'
 ];
 
+const PLAN_LEVELS = {
+  'Starter': 1,
+  'Pro': 2,
+  'Platinum': 3
+};
+
 export default function TemplateList({
   templates,
   onAddTemplate,
   onUpdateTemplate,
-  onDeleteTemplate
+  onDeleteTemplate,
+  simulatedPlan = 'Pro'
 }: TemplateListProps) {
   // Creator State
   const [isAdding, setIsAdding] = useState(false);
@@ -197,7 +205,7 @@ export default function TemplateList({
           className={`px-4 py-2.5 rounded-xl font-bold text-xs flex items-center gap-1.5 transition-all cursor-pointer shadow-sm ${
             isAdding 
               ? 'bg-[#0f172a] text-white hover:bg-slate-800' 
-              : 'bg-indigo-600 text-white hover:bg-indigo-700 shadow-indigo-505/20'
+              : 'bg-indigo-600 text-white hover:bg-indigo-700 shadow-indigo-500/20'
           }`}
         >
           {isAdding ? <X className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
@@ -234,7 +242,7 @@ export default function TemplateList({
                 <select
                   value={category}
                   onChange={e => setCategory(e.target.value as FunnelType)}
-                  className="w-full text-xs rounded-xl border border-slate-200 px-3 py-2.5 bg-white text-slate-800 focus:ring-1 focus:ring-indigo-550 focus:outline-hidden font-semibold cursor-pointer"
+                  className="w-full text-xs rounded-xl border border-slate-200 px-3 py-2.5 bg-white text-slate-800 focus:ring-1 focus:ring-indigo-500 focus:outline-hidden font-semibold cursor-pointer"
                 >
                   {CATEGORIES.map(cat => (
                     <option key={cat} value={cat}>{cat}</option>
@@ -301,7 +309,7 @@ export default function TemplateList({
                       placeholder={`ステップ ${idx + 1} のページ名`}
                       value={stepVal}
                       onChange={e => handleStepValueChange(idx, e.target.value)}
-                      className="flex-1 text-xs rounded-lg border border-slate-200 px-2.5 py-1.5 bg-white text-slate-800 focus:outline-hidden"
+                      className="flex-1 text-xs rounded-lg border border-slate-200 px-2.5 py-1.5 bg-white text-slate-800 focus:outline-hidden font-bold"
                       required
                     />
                     <button
@@ -317,12 +325,21 @@ export default function TemplateList({
               </div>
             </div>
 
-            <div className="flex justify-end pt-2">
+            {/* Actions Footer inside create container */}
+            <div className="pt-4 border-t border-slate-100 flex items-center justify-end space-x-3">
+              <button
+                type="button"
+                onClick={() => setIsAdding(false)}
+                className="px-4 py-2 hover:bg-slate-100 text-slate-600 font-bold text-xs rounded-xl transition-colors cursor-pointer"
+              >
+                キャンセル
+              </button>
               <button
                 type="submit"
-                className="px-6 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold shadow-md shadow-indigo-600/10 cursor-pointer"
+                className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-xl shadow-md transition-colors cursor-pointer flex items-center gap-1"
               >
-                テンプレートをデータベースに保存
+                <Plus className="h-3.5 w-3.5" />
+                <span>テンプレートを作成</span>
               </button>
             </div>
           </form>
@@ -331,88 +348,165 @@ export default function TemplateList({
 
       {/* Main Templates list Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {templates.map((template) => (
-          <motion.div
-            key={template.id}
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="bg-white rounded-3xl border border-slate-200 p-6 flex flex-col justify-between hover:shadow-md transition-all relative"
-          >
-            <div>
-              <div className="flex items-center justify-between mb-4">
-                <span className="bg-indigo-50 text-indigo-700 border border-indigo-100 rounded-lg px-2.5 py-1 text-[10px] font-black uppercase tracking-wider">
-                  {template.category}
-                </span>
+        {templates.map((template) => {
+          const requiredPlanName = template.requiredPlan || 'Starter';
+          const simPlanValue = PLAN_LEVELS[simulatedPlan] || 2;
+          const reqPlanValue = PLAN_LEVELS[requiredPlanName as 'Starter' | 'Pro' | 'Platinum'] || 1;
+          const isAllowed = simPlanValue >= reqPlanValue;
 
-                <div className="flex items-center space-x-2">
-                  <button
-                    onClick={() => handleEditClick(template)}
-                    className="p-1 text-slate-400 hover:text-indigo-650 rounded-lg hover:bg-slate-50 transition-colors cursor-pointer"
-                    title="編集"
-                  >
-                    <Edit className="h-3.5 w-3.5" />
-                  </button>
-                  <button
-                    onClick={() => handleDeleteClick(template.id, template.name)}
-                    className="p-1 text-slate-400 hover:text-red-500 rounded-lg hover:bg-slate-50 transition-colors cursor-pointer"
-                    title="削除"
-                  >
-                    <Trash2 className="h-3.5 w-3.5" />
-                  </button>
+          return (
+            <motion.div
+              key={template.id}
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className={`rounded-3xl border p-6 flex flex-col justify-between transition-all relative ${
+                isAllowed 
+                  ? 'bg-white border-slate-200 hover:shadow-md' 
+                  : 'bg-slate-50/70 border-slate-200/80 shadow-none'
+              }`}
+            >
+              <div>
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    <span className="bg-indigo-50 text-indigo-700 border border-indigo-100 rounded-lg px-2.5 py-1 text-[10px] font-black uppercase tracking-wider">
+                      {template.category}
+                    </span>
+                    
+                    {/* Plan Badge indicator */}
+                    {isAllowed ? (
+                      <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-[9px] font-black border uppercase ${
+                        requiredPlanName === 'Platinum' 
+                          ? 'bg-rose-50 text-rose-700 border-rose-150' 
+                          : requiredPlanName === 'Pro' 
+                            ? 'bg-indigo-50 text-indigo-600 border-indigo-150' 
+                            : 'bg-emerald-50 text-emerald-800 border-emerald-150'
+                      }`}>
+                        <Unlock className="h-2.5 w-2.5 text-current" />
+                        <span>{requiredPlanName}設定解放済</span>
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-[9px] font-black border uppercase bg-slate-100 text-slate-400 border-slate-200">
+                        <Lock className="h-2.5 w-2.5 text-current" />
+                        <span>{requiredPlanName}上位プラン</span>
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Actions buttons */}
+                  <div className="flex items-center gap-1.5">
+                    <button
+                      type="button"
+                      onClick={() => handleEditClick(template)}
+                      className="p-1.5 bg-slate-50 border border-slate-200/50 hover:bg-slate-100 rounded-lg text-slate-500 hover:text-slate-800 transition-colors cursor-pointer"
+                      title="編集"
+                    >
+                      <Edit className="h-3.5 w-3.5" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleDeleteClick(template.id, template.name)}
+                      className="p-1.5 bg-slate-50 border border-slate-200/50 hover:bg-rose-50 rounded-lg text-slate-400 hover:text-rose-600 transition-colors cursor-pointer"
+                      title="削除"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
                 </div>
-              </div>
 
-              <h3 className="text-base font-extrabold text-slate-900 flex items-center gap-2 mb-2 tracking-tight">
-                <Layers className="h-4.5 w-4.5 text-indigo-600 flex-shrink-0" />
-                {template.name}
-              </h3>
+                <h3 className={`text-base font-extrabold flex items-center gap-2 mt-4 mb-2 tracking-tight ${
+                  isAllowed ? 'text-slate-900' : 'text-slate-400'
+                }`}>
+                  <Layers className={`h-4.5 w-4.5 flex-shrink-0 ${isAllowed ? 'text-indigo-600' : 'text-slate-400'}`} />
+                  <span>{template.name}</span>
+                </h3>
 
-              <p className="text-xs text-slate-500 leading-relaxed mb-4">
-                {template.description}
-              </p>
-
-              {/* Template Meta Info (Assignee and expectedDuration) */}
-              <div className="grid grid-cols-2 gap-3 mb-4 bg-slate-50/50 p-3 rounded-xl border border-slate-100">
-                <div className="flex items-center gap-1.5 text-[11px] text-slate-600 font-medium">
-                  <User className="h-3.5 w-3.5 text-indigo-400" />
-                  <span>担当優先: <strong className="text-slate-800">{template.assignee || '未設定'}</strong></span>
-                </div>
-                <div className="flex items-center gap-1.5 text-[11px] text-slate-600 font-medium">
-                  <Clock className="h-3.5 w-3.5 text-indigo-400" />
-                  <span>想定工期: <strong className="text-slate-800">{template.expectedDuration || '未設定'}</strong></span>
-                </div>
-              </div>
-
-              {/* Steps visual list */}
-              <div className="space-y-2 bg-indigo-50/20 p-4 rounded-2xl border border-indigo-100/30 mb-3">
-                <p className="text-[10px] font-bold text-indigo-500 uppercase tracking-widest mb-2 flex items-center gap-1">
-                  <Sparkles className="h-3 w-3 text-indigo-500" />
-                  実装必須ページ構成 ({template.steps?.length || 0}ステップ)
+                <p className={`text-xs leading-relaxed mb-4 text-justify ${
+                  isAllowed ? 'text-slate-500' : 'text-slate-400'
+                }`}>
+                  {template.description}
                 </p>
-                <div className="grid grid-cols-1 gap-1.5">
-                  {template.steps && template.steps.map((step, idx) => (
-                    <div key={idx} className="flex items-center space-x-2 text-xs text-slate-700 font-medium">
-                      <div className="h-4.5 w-4.5 rounded-full bg-indigo-50 text-indigo-700 font-bold text-[9px] flex items-center justify-center shrink-0 border border-indigo-100">
-                        {idx + 1}
-                      </div>
-                      <span className="text-slate-850 font-bold text-xs truncate">{step}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
 
-            <div className="pt-3 border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-400">
-              <span className="flex items-center gap-1">
-                <Info className="h-3.5 w-3.5 text-slate-350" />
-                UTAGEシステム準拠
-              </span>
-              <span className="text-indigo-600 font-bold text-[10px] tracking-wider uppercase">
-                AUTOMATIC PROFILE
-              </span>
-            </div>
-          </motion.div>
-        ))}
+                {/* Template Meta Info (Assignee and expectedDuration) */}
+                <div className="grid grid-cols-2 gap-3 mb-4 bg-slate-50/50 p-3 rounded-xl border border-slate-100/80 font-bold">
+                  <div className="flex items-center gap-1.5 text-[11px] text-slate-600">
+                    <User className="h-3.5 w-3.5 text-indigo-400" />
+                    <span>担当優先: <strong className="text-slate-800">{template.assignee || '未設定'}</strong></span>
+                  </div>
+                  <div className="flex items-center gap-1.5 text-[11px] text-slate-600">
+                    <Clock className="h-3.5 w-3.5 text-indigo-400" />
+                    <span>想定工期: <strong className="text-slate-800">{template.expectedDuration || '未設定'}</strong></span>
+                  </div>
+                </div>
+
+                {/* Steps visual list */}
+                <div className={`space-y-2 p-4 rounded-2xl border mb-3 font-semibold ${
+                  isAllowed 
+                    ? 'bg-indigo-50/20 border-indigo-100/30' 
+                    : 'bg-slate-100/40 border-slate-200/40'
+                }`}>
+                  <p className={`text-[10px] font-black uppercase tracking-widest mb-2 flex items-center gap-1 ${
+                    isAllowed ? 'text-indigo-500' : 'text-slate-500'
+                  }`}>
+                    <Sparkles className="h-3 w-3 text-indigo-500" />
+                    <span>実装必須ページ構成 ({template.steps?.length || 0}ステップ)</span>
+                  </p>
+                  <div className="grid grid-cols-1 gap-1.5">
+                    {template.steps && template.steps.map((step, idx) => (
+                      <div key={idx} className="flex items-center space-x-2 text-xs text-slate-700 font-medium">
+                        <div className={`h-4.5 w-4.5 rounded-full font-bold text-[9px] flex items-center justify-center shrink-0 border ${
+                          isAllowed 
+                            ? 'bg-indigo-50 text-indigo-700 border-indigo-100' 
+                            : 'bg-slate-200 text-slate-500 border-slate-300'
+                        }`}>
+                          {idx + 1}
+                        </div>
+                        <span className="text-slate-800 font-bold text-xs truncate">{step}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Simulated Business Upsell callout box */}
+                {!isAllowed && (
+                  <div className="p-3 bg-gradient-to-br from-amber-50 to-rose-50 border border-amber-100 rounded-2xl mb-4 text-xs font-bold text-amber-900 space-y-1 my-2">
+                    <p className="flex items-center gap-1 text-rose-700 font-black">
+                      <AlertCircle className="h-3.5 w-3.5" />
+                      <span>上位SaaSプラン専用配布テンプレート</span>
+                    </p>
+                    <p className="text-[10px] text-slate-600 leading-normal font-semibold">
+                      このテンプレートを用いて自動構築を走らせるには、<strong>{requiredPlanName}</strong> プランへのご契約の更新が必要です。
+                    </p>
+                    <p className="text-[9px] text-indigo-650 leading-normal font-bold">
+                      💡 右上のヘッダーコントロール「🧪 検証用契約プラン」を 【{requiredPlanName}】 に切り替えると、デモ構築を体験できます。
+                    </p>
+                  </div>
+                )}
+              </div>
+
+              {/* Actions Footer inside list item */}
+              <div className="pt-3 border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-400 mt-2">
+                {isAllowed ? (
+                  <button
+                    type="button"
+                    onClick={() => alert(`🚀 ファネル構築開始:\n成功テンプレート「${template.name}」に基づいて、LINE公式 / Stripe / UTAGE メンバーシップを自動連携＆プロビジョニングし、即時稼働可能なLPとステップ構成をインジェクションします！`)}
+                    className="w-full py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-black rounded-lg text-xs cursor-pointer text-center flex items-center justify-center gap-1 shadow-md shadow-indigo-600/10 transition-all font-semibold"
+                  >
+                    <span>🚀 この構成でファネルを自動構築する</span>
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    disabled
+                    className="w-full py-2 bg-slate-200 text-slate-400 font-black rounded-lg text-xs cursor-not-allowed text-center flex items-center justify-center gap-1 border border-slate-300 font-semibold"
+                  >
+                    <Lock className="h-3.5 w-3.5" />
+                    <span>🔑 {requiredPlanName} プラン以上で構築可能</span>
+                  </button>
+                )}
+              </div>
+            </motion.div>
+          );
+        })}
       </div>
 
       {/* Edit Template Modal Overlay */}
@@ -502,7 +596,7 @@ export default function TemplateList({
                   <button
                     type="button"
                     onClick={handleAddEditStepField}
-                    className="text-[10px] text-indigo-600 hover:text-indigo-800 font-bold flex items-center gap-1 cursor-pointer"
+                    className="text-[10px] text-indigo-650 hover:text-indigo-800 font-bold flex items-center gap-1 cursor-pointer"
                   >
                     <Plus className="h-3 w-3" />
                     <span>ステップ追加</span>

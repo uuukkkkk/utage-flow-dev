@@ -76,6 +76,19 @@ export interface Template {
   steps: string[];
   assignee?: string;
   expectedDuration?: string;
+  requiredPlan?: 'Starter' | 'Pro' | 'Platinum'; // Super Admin distribution plan restriction
+}
+
+export interface WikiArticle {
+  id: string;
+  title: string;
+  category: 'ファネル設計' | 'UTAGE設定' | 'LINE・配信' | 'Stripe決済' | 'AI活用' | 'マーケティング知見';
+  content: string;
+  excerpt: string;
+  author: string;
+  publishedAt: string;
+  requiredPlan?: 'Starter' | 'Pro' | 'Platinum';
+  viewsCount?: number;
 }
 
 export interface AutomationLog {

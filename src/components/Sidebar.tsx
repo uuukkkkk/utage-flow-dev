@@ -10,7 +10,8 @@ import {
   Workflow,
   Contact,
   UserCheck,
-  BookOpen
+  BookOpen,
+  Crown
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
@@ -29,8 +30,9 @@ export default function Sidebar({ activeTab, setActiveTab, isOpen, setIsOpen }: 
     { id: 'analysis', label: '分析・統計', icon: TrendingUp },
     { id: 'team', label: '組織・メンバー', icon: UserCheck },
     { id: 'templates', label: 'ファネルテンプレート', icon: FileCode },
-    { id: 'guide', label: '使い方マニュアル', icon: BookOpen },
+    { id: 'learning', label: '学習', icon: BookOpen },
     { id: 'settings', label: 'システム設定', icon: Settings },
+    { id: 'admin-console', label: '総合管理者コンソール', icon: Crown },
   ];
 
   const handleMenuClick = (id: string) => {

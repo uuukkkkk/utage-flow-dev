@@ -6,24 +6,29 @@ import TemplateList from './components/TemplateList';
 import SettingsView from './components/Settings';
 import ProjectDetailModal from './components/ProjectDetailModal';
 import ProjectDetailView, { parseDeadlineStatus } from './components/ProjectDetailView';
-import GuideView from './components/GuideView';
+import LearningHub from './components/LearningHub';
 import NewProjectModal from './components/NewProjectModal';
 import AnalysisView from './components/AnalysisView';
 import TeamManagement from './components/TeamManagement';
-import { mockClients, mockProjects, mockTemplates, mockTeamMembers } from './data/mockData';
-import { Project, Client, ProjectStatus, Template, TeamMember, UserRole } from './types';
+import AdminConsole from './components/AdminConsole';
+import { mockClients, mockProjects, mockTemplates, mockTeamMembers, mockWikiArticles } from './data/mockData';
+import { Project, Client, ProjectStatus, Template, TeamMember, UserRole, WikiArticle } from './types';
 import { motion, AnimatePresence } from 'motion/react';
 import { LayoutDashboard, Users, Workflow, Settings as SettingsIcon, Bell, AlertTriangle, CheckCircle2, Clock, Calendar } from 'lucide-react';
 
 export default function App() {
   const [activeTab, setActiveTab] = useState('projects');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [hostMode, setHostMode] = useState<'internal' | 'saas'>('saas');
+  const [isSetupCompleted, setIsSetupCompleted] = useState<boolean>(true);
+  const [simulatedPlan, setSimulatedPlan] = useState<'Starter' | 'Pro' | 'Platinum'>('Pro'); // SaaS tenant plan simulator
   
   // App-level data states (local persistence simulation)
   const [projects, setProjects] = useState<Project[]>(mockProjects);
   const [clients, setClients] = useState<Client[]>(mockClients);
   const [templates, setTemplates] = useState<Template[]>(mockTemplates);
   const [members, setMembers] = useState<TeamMember[]>(mockTeamMembers);
+  const [wikiArticles, setWikiArticles] = useState<WikiArticle[]>(mockWikiArticles);
 
   // Add member handler
   const handleAddMember = (newMemberData: Omit<TeamMember, 'id' | 'joinedAt'>) => {
@@ -194,12 +199,35 @@ export default function App() {
             onAddTemplate={handleAddTemplate}
             onUpdateTemplate={handleUpdateTemplate}
             onDeleteTemplate={handleDeleteTemplate}
+            simulatedPlan={simulatedPlan}
           />
         );
       case 'settings':
         return <SettingsView />;
-      case 'guide':
-        return <GuideView />;
+      case 'learning':
+        return (
+          <LearningHub 
+            wikiArticles={wikiArticles}
+            setWikiArticles={setWikiArticles}
+            simulatedPlan={simulatedPlan}
+            setSimulatedPlan={setSimulatedPlan}
+          />
+        );
+      case 'admin-console':
+        return (
+          <AdminConsole 
+            hostMode={hostMode} 
+            setHostMode={setHostMode}
+            isSetupCompleted={isSetupCompleted}
+            setIsSetupCompleted={setIsSetupCompleted}
+            templates={templates}
+            setTemplates={setTemplates}
+            wikiArticles={wikiArticles}
+            setWikiArticles={setWikiArticles}
+            simulatedPlan={simulatedPlan}
+            setSimulatedPlan={setSimulatedPlan}
+          />
+        );
       default:
         return (
           <div className="py-12 text-center text-slate-500">
@@ -234,13 +262,31 @@ export default function App() {
                activeTab === 'analysis' ? '分析・統計ダッシュボード' :
                activeTab === 'team' ? '組織・専属メンバー' :
                activeTab === 'templates' ? 'ファネルテンプレート' :
-               activeTab === 'guide' ? '使い方マニュアル・設計規定書' :
+               activeTab === 'learning' ? '学習ナレッジ・知見Wiki' :
+               activeTab === 'admin-console' ? '総合管理者コンソール' :
                'システム設定'}
             </span>
           </div>
 
           {/* Right Header Operations */}
           <div className="flex items-center space-x-4">
+            {hostMode === 'saas' && (
+              <div className="flex items-center gap-1.5 bg-indigo-50/80 px-3 py-1.5 rounded-xl border border-indigo-100 flex-shrink-0">
+                <span className="text-[10px] text-indigo-700 font-extrabold uppercase font-mono tracking-wider">
+                  🧪 検証用契約プラン:
+                </span>
+                <select
+                  value={simulatedPlan}
+                  onChange={(e) => setSimulatedPlan(e.target.value as any)}
+                  className="bg-white border border-indigo-200 text-[11px] font-black rounded-lg px-2 py-0.5 text-slate-800 cursor-pointer focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                >
+                  <option value="Starter">Starter (初期)</option>
+                  <option value="Pro">Pro (プロ)</option>
+                  <option value="Platinum">Platinum (最高位)</option>
+                </select>
+              </div>
+            )}
+
             {/* Quick Helper Info */}
             <span className="hidden sm:inline-flex items-center px-2.5 py-1 rounded-md text-xs font-semibold bg-teal-50 text-teal-700 border border-teal-150">
               UTAGE公式パートナー認定
