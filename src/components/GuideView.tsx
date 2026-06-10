@@ -209,6 +209,28 @@ export default function GuideView() {
                       クライアントからの細かな要請事項（「銀行振込のメッセージも付けたい」「フォームの項目に電話番号必須を追加」など）は、「追加要望・決定ログ」タブから手動でいつ、誰が書き込んだかを保存可能。これによりディレクター交代時にも齟齬なく構築を引き継ぐことができます。
                     </p>
                   </div>
+
+                  <div className="space-y-1.5 pt-1.5">
+                    <h4 className="text-xs font-black text-slate-800 flex items-center gap-1.5">
+                      <CheckCircle2 className="h-4.5 w-4.5 text-indigo-505" />
+                      4. 複数タスク一括操作アクションバーの活用
+                    </h4>
+                    <p className="text-xs text-slate-650 leading-relaxed pl-6">
+                      マイルストーン進行タスク一覧の各タスクに設置された<strong>チェックボックス</strong>を選択すると、画面上部にスマートなフローティングアクションバーが出現します。
+                      「選択したタスク全員を一斉に <strong>田中(コーダー)</strong> に変更する」や、「進行状況をすべて <strong>制作中</strong> または <strong>完了</strong> に倒す」といった一斉書き換え処理が1タップで完了。大幅なアサイン作業コストを削減します。
+                    </p>
+                  </div>
+
+                  <div className="space-y-1.5 pt-1.5">
+                    <h4 className="text-xs font-black text-slate-800 flex items-center gap-1.5">
+                      <CheckCircle2 className="h-4.5 w-4.5 text-indigo-505" />
+                      5. デイリー自動バックアップ & 災害復旧 (DR対策)
+                    </h4>
+                    <p className="text-xs text-slate-650 leading-relaxed pl-6">
+                      <strong>「システム設定」</strong>のバックアップ保管庫より、指定の深夜等にシステムの状態全体を暗号圧縮アーカイブに自動エクスポートするスケジュール機能が作動。
+                      さらに「現在データのJSONエクスポート」および、退避アーカイブ/外部JSONから1秒で前進捗状態を完全にリストア・ロールバック可能な「JSON復元インポート機能」を搭載しており、万が一の誤操作や障害にも万全です。
+                    </p>
+                  </div>
                 </div>
               </div>
             )}

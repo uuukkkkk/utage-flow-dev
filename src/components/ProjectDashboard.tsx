@@ -6,6 +6,7 @@ import {
   ProjectStatus,
   AutomationLog
 } from '../types';
+import { mockTeamMembers } from '../data/mockData';
 import { 
   Plus, 
   Search, 
@@ -33,7 +34,9 @@ import {
   Activity,
   Check,
   Globe,
-  Webhook
+  Webhook,
+  Users,
+  Percent
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import AutomationLogsView from './AutomationLogsView';
@@ -299,6 +302,51 @@ export default function ProjectDashboard({
   const totalProjectsCount = projects.length;
   const inProgressCount = projects.filter(p => p.status !== '本番稼働中').length;
   const completedCount = projects.filter(p => p.status === '本番稼働中').length;
+
+  // 各ステータスの集計（案件数に応じた進捗バーの表示用）
+  const statusStats = statusCategories.map(status => {
+    const projectsInStatus = projects.filter(p => p.status === status);
+    const count = projectsInStatus.length;
+    const ratio = totalProjectsCount > 0 ? (count / totalProjectsCount) * 100 : 0;
+    
+    // 平均進捗率
+    const avgProgress = projectsInStatus.length > 0 
+      ? Math.round(projectsInStatus.reduce((acc, p) => acc + p.progress, 0) / projectsInStatus.length)
+      : 0;
+      
+    return {
+      status,
+      count,
+      ratio,
+      avgProgress,
+    };
+  });
+
+  // チームメンバーごとの未完了ステップ（負荷状況）集計
+  const memberWorkload = mockTeamMembers.map(member => {
+    let activeStepsCount = 0;
+    let totalStepsCount = 0;
+    
+    projects.forEach(p => {
+      p.funnelSteps?.forEach(step => {
+        if (step.assignee === member.name) {
+          totalStepsCount++;
+          if (step.status !== '完了') {
+            activeStepsCount++;
+          }
+        }
+      });
+    });
+
+    const workloadPercentage = Math.min((activeStepsCount / 5) * 100, 100);
+    
+    return {
+      ...member,
+      activeStepsCount,
+      totalStepsCount,
+      workloadPercentage
+    };
+  });
   
   const totalValueSum = projects.reduce((sum, p) => {
     if (p.revenue) {
@@ -521,6 +569,151 @@ export default function ProjectDashboard({
         </div>
       </div>
 
+      {/* ================= SUMMARY STATS & TEAM WORKLOAD ================= */}
+      <div className="grid grid-cols-1 xl:grid-cols-12 gap-5">
+        {/* 各ステータスの案件数 & 進捗バーサマリーカード */}
+        <div className="xl:col-span-7 bg-white rounded-2xl border border-slate-150 p-4.5 shadow-[0_2px_6px_rgba(0,0,0,0.01)]">
+          <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
+            <div className="flex items-center gap-2">
+              <div className="p-1 px-1.5 bg-indigo-50 text-indigo-600 rounded-md">
+                <Layers className="h-4 w-4" />
+              </div>
+              <div>
+                <h3 className="text-xs font-black text-slate-800">ステータス別サマリー</h3>
+                <p className="text-[10px] text-slate-400 font-semibold leading-none mt-0.5">全体での案件配分とステータス平均進捗率</p>
+              </div>
+            </div>
+            <span className="text-[10px] text-indigo-600 font-mono font-bold bg-indigo-50/60 px-2 py-0.5 rounded-md border border-indigo-150/40">全 {totalProjectsCount} 案件</span>
+          </div>
+
+          <div className="grid grid-cols-2 sm:grid-cols-5 gap-2.5">
+            {statusStats.map((stat) => {
+              const badgeColor = getStatusBadgeColor(stat.status);
+              
+              return (
+                <div key={stat.status} className="p-2.5 bg-slate-50/70 border border-slate-100/80 rounded-xl flex flex-col justify-between hover:border-indigo-150 transition-all group">
+                  <div>
+                    <div className="flex items-center justify-between gap-1 mb-1">
+                      <span className="text-[9.5px] font-black text-slate-700 truncate block max-w-[85px] leading-tight" title={stat.status}>
+                        {stat.status}
+                      </span>
+                      <span className={`w-1.5 h-1.5 rounded-full shrink-0 bg-${badgeColor}-500`} />
+                    </div>
+                    <div className="flex items-baseline gap-0.5 mt-0.5">
+                      <span className="text-base font-black text-[#1f2937]">{stat.count}</span>
+                      <span className="text-[8px] text-slate-400 font-semibold">件</span>
+                    </div>
+                  </div>
+
+                  <div className="mt-2.5 space-y-1">
+                    {/* 案件数の割合を示す進捗バー */}
+                    <div className="w-full h-1 bg-slate-200/60 rounded-full overflow-hidden" title={`全体アサイン比: ${Math.round(stat.ratio)}%`}>
+                      <div 
+                        className={`h-full rounded-full transition-all duration-300 ${
+                          stat.status === '本番稼働中' ? 'bg-emerald-500' :
+                          stat.status === 'テスト運用中' ? 'bg-indigo-500' :
+                          stat.status === 'UTAGE実装中' ? 'bg-violet-500' :
+                          stat.status === 'クライアント確認中' ? 'bg-amber-500' : 'bg-slate-450'
+                        }`}
+                        style={{ width: `${stat.ratio}%` }}
+                      />
+                    </div>
+                    <div className="flex items-center justify-between text-[8px] text-slate-400 font-medium">
+                      <span>割合: {Math.round(stat.ratio)}%</span>
+                      <span>進捗: {stat.avgProgress}%</span>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* チームメンバーの負荷状況カード */}
+        <div className="xl:col-span-5 bg-white rounded-2xl border border-slate-150 p-4.5 shadow-[0_2px_6px_rgba(0,0,0,0.01)]">
+          <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
+            <div className="flex items-center gap-2">
+              <div className="p-1 px-1.5 bg-indigo-50 text-indigo-500 rounded-md">
+                <Users className="h-4 w-4" />
+              </div>
+              <div>
+                <h3 className="text-xs font-black text-slate-800">メンバー稼働負荷状況</h3>
+                <p className="text-[10px] text-slate-400 font-semibold leading-none mt-0.5">担当している未完了マイルストーン</p>
+              </div>
+            </div>
+            <span className="text-[8px] font-black text-emerald-600 bg-emerald-50/70 border border-emerald-100 rounded-lg px-2 py-0.5 leading-none">
+              AUTO TRACKING
+            </span>
+          </div>
+
+          <div className="space-y-2">
+            {memberWorkload.map((m) => {
+              // 負荷レベル判定
+              let loadLabel = '適正';
+              let loadTextColor = 'text-indigo-650';
+              let loadBgColor = 'bg-indigo-50/30 border-indigo-150/30';
+              let loadBarColor = 'bg-indigo-500';
+
+              if (m.activeStepsCount === 0) {
+                loadLabel = '空きあり';
+                loadTextColor = 'text-emerald-600';
+                loadBgColor = 'bg-emerald-50/30 border-emerald-100/30';
+                loadBarColor = 'bg-emerald-450';
+              } else if (m.activeStepsCount >= 4) {
+                loadLabel = '高負荷';
+                loadTextColor = 'text-rose-600';
+                loadBgColor = 'bg-rose-50/30 border-rose-100/30';
+                loadBarColor = 'bg-rose-500';
+              } else if (m.activeStepsCount >= 2) {
+                loadLabel = '稼働中';
+                loadTextColor = 'text-amber-700';
+                loadBgColor = 'bg-amber-50/30 border-amber-100/30';
+                loadBarColor = 'bg-amber-500';
+              }
+
+              return (
+                <div key={m.id} className="flex items-center justify-between gap-3 text-xs bg-slate-50/50 border border-slate-100/70 rounded-xl p-2 px-3 hover:bg-slate-50 transition-colors">
+                  <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                    <div className="relative shrink-0">
+                      <img 
+                        src={m.avatarUrl || 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=80&fit=crop&q=80'} 
+                        alt={m.name} 
+                        referrerPolicy="no-referrer"
+                        className="w-7 h-7 rounded-full border border-slate-200/80 object-cover" 
+                      />
+                      <span className="absolute bottom-0 right-0 w-2 h-2 bg-emerald-500 border border-white rounded-full" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <span className="font-extrabold text-slate-800 text-[11.5px] truncate">{m.name}</span>
+                        <span className="text-[7.5px] text-slate-400 font-extrabold uppercase leading-none">{m.role}</span>
+                      </div>
+                      
+                      {/* 負荷率の進捗バー */}
+                      <div className="mt-1 flex items-center gap-2">
+                        <div className="w-full bg-slate-200/70 h-1 rounded-full overflow-hidden">
+                          <div 
+                            className={`h-full ${loadBarColor} rounded-full transition-all duration-500`}
+                            style={{ width: `${m.workloadPercentage}%` }}
+                          />
+                        </div>
+                        <span className="text-[8px] font-mono font-bold text-slate-400/90 w-10 shrink-0 text-right">
+                          {m.activeStepsCount}/{m.totalStepsCount} T
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <span className={`px-1.5 py-0.5 rounded text-[8px] font-black shrink-0 ${loadBgColor} ${loadTextColor} border`}>
+                    {loadLabel}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+
       {/* Main Container Switch */}
       {viewMode === 'grid' ? (
         /* ================= GRID / STATS MODE (BENTO VIEW) ================= */
@@ -680,8 +873,8 @@ export default function ProjectDashboard({
         </div>
       ) : viewMode === 'kanban' ? (
         /* ================= KANBAN BOARD VIEW (DRAG & DROP) ================= */
-        <div className="overflow-x-auto pb-4 -mx-4 px-4 sm:-mx-6 sm:px-6">
-          <div className="flex gap-3 w-max min-w-full items-stretch pb-3 pt-1 pr-12">
+        <div className="w-full overflow-x-auto rounded-3xl bg-slate-100/40 border border-slate-200/60 p-4 shadow-3xs">
+          <div className="flex gap-3.5 w-max min-w-full items-stretch pb-2 pr-6">
             {statusCategories.map((status) => {
               const columnProjects = filteredProjects.filter(p => p.status === status);
               const isOver = draggingOverStatus === status;
@@ -692,10 +885,10 @@ export default function ProjectDashboard({
                   onDragOver={(e) => handleDragOver(e, status)}
                   onDragLeave={handleDragLeave}
                   onDrop={(e) => handleDrop(e, status)}
-                  className={`w-[218px] shrink-0 rounded-2xl border transition-all flex flex-col ${
+                  className={`w-[210px] shrink-0 rounded-2xl border transition-all flex flex-col ${
                     isOver 
                       ? 'bg-indigo-50/70 border-indigo-250 ring-2 ring-indigo-500/10' 
-                      : 'bg-slate-50/60 border-slate-200/80'
+                      : 'bg-slate-50/75 border-slate-200'
                   }`}
                 >
                   {/* Column Header */}

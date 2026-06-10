@@ -136,6 +136,9 @@ export default function ProjectDetailView({
   const [revenue, setRevenue] = useState('');
   const [isEditingMeta, setIsEditingMeta] = useState(false);
 
+  // Bulk step selection states
+  const [selectedStepIds, setSelectedStepIds] = useState<string[]>([]);
+
   // Tabs for interactive right-hand details workspace
   const [rightPanelTab, setRightPanelTab] = useState<'steps' | 'history' | 'google' | 'ai'>('steps');
   const [selectedStepForAi, setSelectedStepForAi] = useState<string>('');
@@ -184,6 +187,7 @@ export default function ProjectDetailView({
       setTargetDate(project.targetDate);
       setRevenue(project.revenue || '未設定');
       setIsEditingMeta(false);
+      setSelectedStepIds([]);
       
       if (project.funnelSteps && project.funnelSteps.length > 0) {
         setSelectedStepForAi(project.funnelSteps[0].name);
@@ -322,6 +326,63 @@ ${aiGeneratedData.emailBody}
       };
       onUpdateProject(updatedProj);
     }
+  };
+
+  const handleToggleStepSelection = (stepId: string) => {
+    setSelectedStepIds(prev => 
+      prev.includes(stepId) ? prev.filter(id => id !== stepId) : [...prev, stepId]
+    );
+  };
+
+  const handleToggleAllSteps = () => {
+    if (selectedStepIds.length === steps.length) {
+      setSelectedStepIds([]);
+    } else {
+      setSelectedStepIds(steps.map(s => s.id));
+    }
+  };
+
+  const handleBulkStatusChange = (newStepStatus: FunnelStep['status']) => {
+    if (!project || selectedStepIds.length === 0) return;
+    const updatedSteps = steps.map(step => 
+      selectedStepIds.includes(step.id) ? { ...step, status: newStepStatus } : step
+    );
+    setSteps(updatedSteps);
+
+    const totalSteps = updatedSteps.length;
+    if (totalSteps > 0) {
+      const completionSum = updatedSteps.reduce((acc, step) => {
+        if (step.status === '完了') return acc + 100;
+        if (step.status === '確認中') return acc + 75;
+        if (step.status === '制作中') return acc + 25;
+        return acc;
+      }, 0);
+      const calculatedProgress = Math.round(completionSum / totalSteps);
+      
+      const updatedProj: Project = {
+        ...project,
+        status: status,
+        funnelSteps: updatedSteps,
+        progress: Math.min(100, Math.max(0, calculatedProgress))
+      };
+      onUpdateProject(updatedProj);
+    }
+    setToastMessage(`📢 選択した ${selectedStepIds.length} 個のタスクステータスを「${newStepStatus}」に一括変更しました。`);
+  };
+
+  const handleBulkAssigneeChange = (assigneeName: string) => {
+    if (!project || selectedStepIds.length === 0) return;
+    const updatedSteps = steps.map(step => 
+      selectedStepIds.includes(step.id) ? { ...step, assignee: assigneeName } : step
+    );
+    setSteps(updatedSteps);
+
+    const updatedProj: Project = {
+      ...project,
+      funnelSteps: updatedSteps
+    };
+    onUpdateProject(updatedProj);
+    setToastMessage(`📢 選択した ${selectedStepIds.length} 個のタスク担当者を「${assigneeName || '未割り当て'}」に一括設定しました。`);
   };
 
   const handleAddNewHistoryLog = () => {
@@ -989,110 +1050,203 @@ ${aiGeneratedData.emailBody}
                     </div>
 
                     <div className="bg-slate-50 border border-slate-200/40 p-2.5 rounded-lg flex flex-col justify-between">
-                      <span className="text-[8px] text-slate-450 tracking-wider">受注規模 (予算)</span>
-                      <strong className="text-slate-800 text-[11px] mt-1 text-teal-750 flex items-center gap-0.5">
-                        <DollarSign className="h-3.5 w-3.5 text-teal-600" />
-                        {project.revenue || '未設定'}
-                      </strong>
-                      <span className="text-[8px] text-slate-400 mt-0.5">UTAGE総合受注</span>
-                    </div>
+                      <span className="text-[8px] text-slate-450 tracking-wider">�            {/* Render selected widescreen tab content details */}
+                      想定受注規模 / 予算
+                    </span>
+                    <strong className="text-slate-800 text-[11px] mt-1 pr-1 truncate">
+                      {project.revenue || '未設定'}
+                    </strong>
+                    <span className="text-[8px] text-slate-400 mt-0.5">※目安予算額</span>
                   </div>
                 </div>
-              )}
-            </div>
-
-            <div className="pt-4 border-t border-slate-100 flex items-center justify-between">
-              <span className="text-[9px] text-slate-400">作成日: {project.startDate}</span>
-              <button
-                type="button"
-                onClick={handleDelete}
-                className="text-xs text-rose-500 hover:text-rose-600 font-bold hover:underline"
-              >
-                プロジェクト全体を削除する
-              </button>
+              </div>
+            )}
             </div>
           </div>
         </div>
 
-        {/* Right Side: Widescreen Detailed Workspace Tabs */}
-        <div className="lg:col-span-8 bg-white p-6 rounded-2xl border border-slate-200 shadow-xs flex flex-col justify-between min-h-[580px]">
-          <div>
-            {/* Navigational Sub Tabs */}
-            <div className="grid grid-cols-2 md:grid-cols-4 bg-slate-100 p-1.5 rounded-xl border border-slate-200/80 gap-1.5 mb-6">
+        {/* Right Side: Interactive Details workspace */}
+        <div className="lg:col-span-8 space-y-6">
+          <div className="bg-white rounded-3xl border border-slate-200 shadow-xs p-6 relative">
+            
+            {/* Tabs selection menu */}
+            <div className="flex border-b border-slate-200 mb-6 overflow-x-auto whitespace-nowrap gap-1">
               {[
-                { id: 'steps', label: '構築タスク', fullLabel: '構築タスクステップ', icon: ListTodo, color: 'text-indigo-505' },
-                { id: 'history', label: '要望・決定', fullLabel: '追加要望・決定ログ', icon: History, color: 'text-amber-505' },
-                { id: 'google', label: 'Google連携', fullLabel: 'Google 連携チャット', icon: Chrome, color: 'text-blue-500' },
-                { id: 'ai', label: 'AI原稿', fullLabel: 'Gemini AI原稿生成', icon: Sparkles, color: 'text-emerald-500 animate-pulse' }
-              ].map((tab) => {
-                const TabIcon = tab.icon;
-                const isSelected = rightPanelTab === tab.id;
-                return (
-                  <button
-                    key={tab.id}
-                    type="button"
-                    onClick={() => setRightPanelTab(tab.id as any)}
-                    className={`flex items-center justify-center gap-2 py-2.5 px-3 rounded-lg text-xs font-black transition-all cursor-pointer ${
-                      isSelected 
-                        ? 'bg-white text-slate-800 shadow-xs ring-1 ring-black/5' 
-                        : 'text-slate-500 hover:text-slate-700 hover:bg-white/45'
-                    }`}
-                  >
-                    <TabIcon className={`h-4 w-4 shrink-0 ${tab.color}`} />
-                    <span className="font-extrabold tracking-tight text-[11px] sm:text-xs">
-                      {/* Show shorter label on tablet block column-width constraints, show descriptive on mobile and wide screen */}
-                      <span className="md:hidden xl:inline">{tab.fullLabel}</span>
-                      <span className="hidden md:inline xl:hidden">{tab.label}</span>
-                    </span>
-                  </button>
-                );
-              })}
+                { id: 'steps', label: 'マイルストーン進行', count: steps.length },
+                { id: 'history', label: '変更・決定要望履歴', count: project.historyLogs?.length || 0 },
+                { id: 'google', label: 'Google Docs連携要件書' },
+                { id: 'ai', label: 'AI LP構成・コピーライター' }
+              ].map((tab) => (
+                <button
+                  key={tab.id}
+                  type="button"
+                  onClick={() => setRightPanelTab(tab.id as any)}
+                  className={`px-4 py-2.5 text-xs font-black border-b-2 transition-all cursor-pointer ${
+                    rightPanelTab === tab.id
+                      ? 'border-indigo-600 text-indigo-650 bg-indigo-50/10'
+                      : 'border-transparent text-slate-500 hover:text-slate-700 hover:bg-slate-50'
+                  }`}
+                >
+                  {tab.label} {tab.count !== undefined && `(${tab.count})`}
+                </button>
+              ))}
             </div>
 
             {/* Render selected widescreen tab content details */}
             {rightPanelTab === 'steps' && (
               <div className="space-y-4">
-                <div className="flex items-center justify-between pb-2 border-b border-slate-200">
-                  <span className="text-xs text-slate-550 font-black uppercase tracking-wider">
-                    マイルストーン別進捗管理 & クルー割当
-                  </span>
-                  <span className="text-xs bg-indigo-50 text-indigo-700 px-3 py-1 rounded-full font-black">
+                {/* Bulk operation action shelf (glowing, premium top container) */}
+                {selectedStepIds.length > 0 ? (
+                  <div className="sticky top-0 z-10 p-3.5 bg-slate-900 border border-slate-800 rounded-2xl flex flex-col lg:flex-row lg:items-center justify-between gap-3 animate-fade-in shadow-md">
+                    <div className="flex items-center gap-2.5">
+                      <div className="flex items-center justify-center w-5 h-5 rounded-full bg-indigo-500/10 border border-indigo-500/20">
+                        <span className="w-2 h-2 rounded-full bg-indigo-400 animate-ping" />
+                      </div>
+                      <span className="text-xs font-black text-indigo-100">
+                        選択中：<span className="text-indigo-400 bg-indigo-950 px-2 py-0.5 rounded-md font-mono text-[11px] font-bold border border-indigo-900">{selectedStepIds.length} 個</span> のタスクを一括編集
+                      </span>
+                    </div>
+
+                    <div className="flex items-center gap-3.5 flex-wrap">
+                      <div className="flex items-center gap-2 text-xs font-semibold">
+                        <span className="text-[10px] text-slate-400 font-extrabold uppercase">ステータス:</span>
+                        <select
+                          value=""
+                          onChange={(e) => {
+                            if (e.target.value) {
+                              handleBulkStatusChange(e.target.value as any);
+                            }
+                          }}
+                          className="text-[11px] font-black bg-slate-800 border border-slate-700 rounded-lg px-2.5 py-1 text-slate-100 cursor-pointer focus:ring-1 focus:ring-indigo-500 font-mono"
+                        >
+                          <option value="" className="text-slate-400">選択してください</option>
+                          <option value="未着手" className="text-slate-800 bg-white">未着手</option>
+                          <option value="制作中" className="text-slate-800 bg-white">制作中</option>
+                          <option value="確認中" className="text-slate-800 bg-white font-bold">確認中 (クライアントレビュー)</option>
+                          <option value="完了" className="text-slate-800 bg-white font-extrabold">完了 (作業フィニッシュ)</option>
+                        </select>
+                      </div>
+
+                      <div className="flex items-center gap-2 text-xs font-semibold">
+                        <span className="text-[10px] text-slate-400 font-extrabold uppercase">担当メンバー:</span>
+                        <select
+                          value=""
+                          onChange={(e) => {
+                            handleBulkAssigneeChange(e.target.value);
+                          }}
+                          className="text-[11px] font-black bg-slate-800 border border-slate-700 rounded-lg px-2.5 py-1 text-slate-100 cursor-pointer focus:ring-1 focus:ring-indigo-500"
+                        >
+                          <option value="" className="text-slate-400">選択してください</option>
+                          <option value="" className="text-slate-850 bg-white">未設定 (アサイン解除)</option>
+                          {members.map(m => (
+                            <option key={m.id} value={m.name} className="text-slate-800 bg-white">{m.name} ({m.role})</option>
+                          ))}
+                        </select>
+                      </div>
+
+                      <div className="flex gap-2">
+                        <button
+                          type="button"
+                          onClick={() => setSelectedStepIds([])}
+                          className="text-[10px] text-slate-300 hover:text-white bg-slate-800 border border-slate-700 px-2.5 py-1 rounded-lg transition-colors font-black cursor-pointer shadow-3xs"
+                        >
+                          選択クリア
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="p-3 bg-slate-50 border border-slate-150 rounded-2xl flex items-center justify-between text-xs text-slate-500">
+                    <div className="flex items-center gap-1.5 font-bold">
+                      <span className="w-1.5 h-1.5 rounded-full bg-slate-400" />
+                      <span>タスクを選択すると、ここに一括更新バーが表示されます</span>
+                    </div>
+                    <span className="text-[10px] text-slate-450 font-bold font-mono">BULK EDIT READY</span>
+                  </div>
+                )}
+
+                {/* Subheader and Select All bar */}
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-3 border-b border-slate-200 gap-2.5">
+                  <div className="flex items-center gap-2.5">
+                    {/* Header level Select All switch */}
+                    <div className="flex items-center gap-2 bg-slate-50 border border-slate-200/60 rounded-xl p-1 px-2.5">
+                      <input
+                        type="checkbox"
+                        id="selectAllTasksHeader"
+                        checked={steps.length > 0 && selectedStepIds.length === steps.length}
+                        onChange={handleToggleAllSteps}
+                        className="w-4 h-4 rounded text-indigo-650 border-slate-300 focus:ring-indigo-500 cursor-pointer shrink-0"
+                      />
+                      <label htmlFor="selectAllTasksHeader" className="text-[10px] font-black text-slate-650 cursor-pointer select-none">
+                        すべて選択
+                      </label>
+                    </div>
+                    <span className="text-xs text-slate-450 font-semibold">|</span>
+                    <span className="text-xs text-slate-550 font-black uppercase tracking-wider font-sans">
+                      マイルストーン別進捗管理 & クルー割当
+                    </span>
+                  </div>
+                  <span className="text-xs bg-indigo-50 text-indigo-700 px-3 py-1 rounded-full font-black self-start sm:self-auto border border-indigo-150/40">
                     {steps.filter(s => s.status === '完了').length} / {steps.length} 完了
                   </span>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* List container for row by row display */}
+                <div className="space-y-2.5">
                   {steps.map((step) => {
                     const dStat = parseDeadlineStatus(step.targetDate, step.status);
-                    const borderStyle = dStat.isOverdue 
-                      ? 'border-rose-300 bg-rose-50/30 hover:border-rose-400' 
-                      : dStat.isNear 
-                        ? 'border-amber-300 bg-amber-50/30 hover:border-amber-400' 
-                        : 'border-slate-200 bg-slate-50/50 hover:border-slate-350';
+                    const isSelected = selectedStepIds.includes(step.id);
+                    
+                    // Styled border depending on status/delay/selection state
+                    const containerStyle = isSelected 
+                      ? 'border-indigo-400 bg-indigo-50/15 ring-1 ring-indigo-500/10 shadow-xs'
+                      : dStat.isOverdue 
+                        ? 'border-rose-250 bg-rose-50/10 hover:border-rose-350 hover:bg-rose-50/20' 
+                        : dStat.isNear 
+                          ? 'border-amber-250 bg-amber-50/10 hover:border-amber-350 hover:bg-amber-50/20' 
+                          : 'border-slate-150 bg-white hover:border-slate-300 hover:bg-slate-50/30';
+                    
                     return (
-                      <div key={step.id} className={`p-4 rounded-xl border shadow-3xs space-y-3.5 transition-colors ${borderStyle}`}>
-                        <div className="flex items-start justify-between gap-1.5 min-h-[40px]">
-                          <div className="space-y-1">
-                            <span className="text-xs font-extrabold text-slate-800 leading-normal block">
-                              {step.name}
-                            </span>
+                      <div 
+                        key={step.id} 
+                        className={`transition-all duration-150 rounded-xl border p-3 flex flex-col md:flex-row md:items-center justify-between gap-3.5 ${containerStyle}`}
+                      >
+                        {/* Left block: Checkbox + Task Name + Badges */}
+                        <div className="flex items-start gap-3 min-w-0 md:flex-1">
+                          <input
+                            type="checkbox"
+                            checked={isSelected}
+                            onChange={() => handleToggleStepSelection(step.id)}
+                            className="w-4.5 h-4.5 rounded-md text-indigo-650 border-slate-300 focus:ring-indigo-500 cursor-pointer shrink-0 mt-0.5"
+                          />
+                          <div className="min-w-0 space-y-1">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span className="text-xs font-extrabold text-slate-800 leading-snug break-words">
+                                {step.name}
+                              </span>
+                              <span className={`px-2 py-0.5 rounded-md text-[9px] font-extrabold border shrink-0 ${getStepStatusClasses(step.status)}`}>
+                                {step.status}
+                              </span>
+                            </div>
                             {dStat.isNear && (
-                              <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[9px] font-extrabold ${
-                                dStat.isOverdue ? 'bg-rose-100 text-rose-700' : 'bg-amber-100 text-amber-800'
+                              <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[8.5px] font-black ${
+                                dStat.isOverdue ? 'bg-rose-50 text-rose-700 border border-rose-150' : 'bg-amber-50 text-amber-800 border border-amber-150'
                               }`}>
-                                {dStat.isOverdue ? <AlertTriangle className="h-3.5 w-3.5 shrink-0" /> : <Clock className="h-3.5 w-3.5 text-amber-600 animate-pulse shrink-0" />}
+                                {dStat.isOverdue ? (
+                                  <AlertTriangle className="h-3 w-3 text-rose-500 shrink-0" />
+                                ) : (
+                                  <Clock className="h-3 w-3 text-amber-500 animate-pulse shrink-0" />
+                                )}
                                 <span>{dStat.label}</span>
                               </span>
                             )}
                           </div>
-                          <span className={`px-2 py-0.5 rounded-md text-[9px] font-extrabold border shrink-0 ${getStepStatusClasses(step.status)}`}>
-                            {step.status}
-                          </span>
                         </div>
 
-                        <div className="grid grid-cols-2 gap-2 text-[10px] pt-2 border-t border-slate-100">
-                          <div>
-                            <span className="block text-[8px] text-slate-400 font-bold uppercase mb-0.5">アサイン</span>
+                        {/* Right block: Assignee + Date Input + Status switch controls */}
+                        <div className="flex flex-wrap items-center gap-3.5 text-xs">
+                          {/* Assignee select */}
+                          <div className="w-[115px] shrink-0">
                             <select
                               value={step.assignee || ''}
                               onChange={(e) => {
@@ -1103,11 +1257,11 @@ ${aiGeneratedData.emailBody}
                                 const updatedProj: Project = { ...project, funnelSteps: updatedSteps };
                                 onUpdateProject(updatedProj);
                               }}
-                              className="w-full text-xs font-bold text-slate-750 bg-white border border-slate-200 rounded-md px-1.5 py-1 focus:outline-hidden cursor-pointer"
+                              className="w-full text-[11px] font-bold text-slate-705 bg-white border border-slate-200 rounded-lg px-2 py-1 focus:ring-1 focus:ring-indigo-500 cursor-pointer"
                             >
-                              <option value="">未設定</option>
+                              <option value="">👤 未設定</option>
                               {members.map(m => (
-                                <option key={m.id} value={m.name}>{m.name} ({m.role})</option>
+                                <option key={m.id} value={m.name}>{m.name} ({m.role.substring(0, 8)})</option>
                               ))}
                               {step.assignee && !members.some(m => m.name === step.assignee) && (
                                 <option value={step.assignee}>{step.assignee}</option>
@@ -1115,8 +1269,8 @@ ${aiGeneratedData.emailBody}
                             </select>
                           </div>
 
-                          <div>
-                            <span className="block text-[8px] text-slate-400 font-bold uppercase mb-0.5">期日目安</span>
+                          {/* Date input */}
+                          <div className="w-[85px] shrink-0">
                             <input
                               type="text"
                               value={step.targetDate || ''}
@@ -1129,30 +1283,28 @@ ${aiGeneratedData.emailBody}
                                 onUpdateProject(updatedProj);
                               }}
                               placeholder="例: 6月20日"
-                              className="w-full text-xs font-bold text-slate-750 bg-white border border-slate-200 rounded-md px-2 py-1 focus:outline-hidden"
+                              className="w-full text-[11px] font-bold text-slate-700 bg-white border border-slate-200 rounded-lg px-2 py-1 text-center focus:ring-1 focus:ring-indigo-500"
                             />
                           </div>
-                        </div>
 
-                      <div className="flex items-center justify-between pt-2 border-t border-slate-150">
-                        <span className="text-[9px] text-slate-400 font-bold">状況切替:</span>
-                        <div className="flex space-x-1 select-none">
-                          {(['未着手', '制作中', '確認中', '完了'] as const).map((st) => (
-                            <button
-                              key={st}
-                              type="button"
-                              onClick={() => handleStepStatusChange(step.id, st)}
-                              className={`px-1.5 py-0.5 rounded text-[8px] font-extrabold border transition-all cursor-pointer ${
-                                step.status === st 
-                                  ? 'bg-indigo-600 text-white border-indigo-600 shadow-3xs' 
-                                  : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-100'
-                              }`}
-                            >
-                              {st}
-                            </button>
-                          ))}
+                          {/* Status toggle tag list */}
+                          <div className="flex items-center gap-1 select-none border-l border-slate-150 pl-3.5">
+                            {(['未着手', '制作中', '確認中', '完了'] as const).map((st) => (
+                              <button
+                                key={st}
+                                type="button"
+                                onClick={() => handleStepStatusChange(step.id, st)}
+                                className={`px-1.5 py-0.5 rounded text-[8px] font-black border transition-all cursor-pointer ${
+                                  step.status === st 
+                                    ? 'bg-indigo-600 text-white border-indigo-600 shadow-3xs' 
+                                    : 'bg-white text-slate-550 border-slate-200 hover:bg-slate-50'
+                                }`}
+                              >
+                                {st}
+                              </button>
+                            ))}
+                          </div>
                         </div>
-                      </div>
                       </div>
                     );
                   })}

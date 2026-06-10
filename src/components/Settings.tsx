@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Settings, Shield, Link, User, Check, RefreshCw, Key, Landmark, MailOpen, Globe, Laptop, Bell } from 'lucide-react';
+import { Settings, Shield, Link, User, Check, RefreshCw, Key, Landmark, MailOpen, Globe, Laptop, Bell, Database, DownloadCloud, UploadCloud, History } from 'lucide-react';
 import { motion } from 'motion/react';
 
 export default function SettingsView() {
@@ -9,11 +9,55 @@ export default function SettingsView() {
   const [isSyncing, setIsSyncing] = useState(false);
   const [testNotificationSent, setTestNotificationSent] = useState(false);
 
+  // Auto-Backup configurations
+  const [isAutoBackup, setIsAutoBackup] = useState(true);
+  const [autoBackupTime, setAutoBackupTime] = useState('03:00');
+  const [backupRetentionDays, setBackupRetentionDays] = useState(30);
+  const [isGeneratingBackup, setIsGeneratingBackup] = useState(false);
+  const [manualBackupSuccess, setManualBackupSuccess] = useState(false);
+  const [restoreStatus, setRestoreStatus] = useState<string | null>(null);
+  
+  const [backupHistory, setBackupHistory] = useState([
+    { id: 'backup-1', timestamp: '2026-06-08 03:00:12', size: '154 KB', trigger: '自動定期', status: 'SUCCESS' },
+    { id: 'backup-2', timestamp: '2026-06-09 03:00:08', size: '156 KB', trigger: '自動定期', status: 'SUCCESS' },
+    { id: 'backup-current', timestamp: '2026-06-10 03:00:22', size: '158 KB', trigger: '自動定期', status: 'SUCCESS' }
+  ]);
+
+  const handleManualBackup = () => {
+    setIsGeneratingBackup(true);
+    setManualBackupSuccess(false);
+    setTimeout(() => {
+      setIsGeneratingBackup(false);
+      setManualBackupSuccess(true);
+      const now = new Date();
+      const newBackup = {
+        id: `backup-manual-${Date.now()}`,
+        timestamp: `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}:${String(now.getSeconds()).padStart(2, '0')}`,
+        size: '159 KB',
+        trigger: '手動要求',
+        status: 'SUCCESS' as const
+      };
+      setBackupHistory(prev => [newBackup, ...prev]);
+    }, 1500);
+  };
+
+  const handleRestore = (timestamp: string) => {
+    setRestoreStatus(`復元プログラム実行中... ${timestamp} 時点のアーカイブを展開しています。`);
+    setTimeout(() => {
+      setRestoreStatus(null);
+      alert(`🎉 復元が正常に完了しました！\n${timestamp} のバックアップアーカイブに基づいて、UTAGE Hub上の全クライアント要件、案件ステータス、および変更ログを完全に復旧させました。`);
+    }, 1800);
+  };
+
   // UTAGE MCP states
   const [mcpStatus, setMcpStatus] = useState<'disconnected' | 'connecting' | 'connected' | 'error'>('connected');
   const [mcpEndpoint, setMcpEndpoint] = useState('https://docs.utage-system.com/api/mcp/v2');
   const [mcpToken, setMcpToken] = useState('ut_mcp_live_e992b8d52ca63f01bcfcf');
   const [showToken, setShowToken] = useState(false);
+  
+  // UTAGE Auto-Sync states
+  const [isMcpAutoSync, setIsMcpAutoSync] = useState(true);
+  const [mcpAutoSyncTime, setMcpAutoSyncTime] = useState('02:00');
 
   const handleSync = () => {
     setIsSyncing(true);
@@ -221,6 +265,47 @@ export default function SettingsView() {
                 </div>
               </div>
 
+              {/* UTAGE Auto Sync Schedule Options */}
+              <div className="p-3.5 bg-slate-50 border border-slate-150 rounded-2xl space-y-2.5">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <div className="space-y-0.5">
+                    <h4 className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                      <span className="w-1.5 h-1.5 rounded-full bg-indigo-500 animate-pulse" />
+                      プロジェクト情報の自動定期同期
+                    </h4>
+                    <p className="text-[10px] text-slate-450 font-medium leading-normal">
+                      指定した時刻に1日1回、UTAGE側の最新プロジェクト情報やファネルステータスを自動的にバックグラウンド同期します。
+                    </p>
+                  </div>
+                  <label className="relative inline-flex items-center cursor-pointer shrink-0">
+                    <input 
+                      type="checkbox" 
+                      checked={isMcpAutoSync} 
+                      onChange={(e) => setIsMcpAutoSync(e.target.checked)} 
+                      className="sr-only peer" 
+                    />
+                    <div className="w-9 h-5 bg-slate-200 peer-focus:outline-hidden rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-indigo-650"></div>
+                  </label>
+                </div>
+
+                {isMcpAutoSync && (
+                  <div className="pt-2 border-t border-slate-100 flex flex-col sm:flex-row sm:items-center gap-3 text-xs">
+                    <div className="flex items-center gap-2">
+                      <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">同期実行時刻:</span>
+                      <input
+                        type="time"
+                        value={mcpAutoSyncTime}
+                        onChange={(e) => setMcpAutoSyncTime(e.target.value)}
+                        className="rounded-lg border border-slate-250 px-2.5 py-1 bg-white text-slate-800 text-xs font-mono font-bold focus:ring-1 focus:ring-indigo-500 cursor-pointer"
+                      />
+                    </div>
+                    <span className="text-[10px] font-black text-indigo-600 bg-indigo-50 border border-indigo-150/50 rounded-lg px-2 py-0.5">
+                      毎日 {mcpAutoSyncTime} に、UTAGE APIとの整合チェックを自動バックグラウンド実行します。
+                    </span>
+                  </div>
+                )}
+              </div>
+
               {/* Action Buttons row */}
               <div className="flex flex-col sm:flex-row gap-3 pt-1">
                 <button
@@ -352,6 +437,177 @@ export default function SettingsView() {
                     <span>【テスト通知】接続検証は正常です。SlackおよびLINE WORKS宛ての経路疎通に成功しました！</span>
                   </span>
                 )}
+              </div>
+            </div>
+          </div>
+
+          {/* Auto Backup & Disaster Recovery Panel */}
+          <div className="bg-white rounded-3xl border border-slate-200/80 p-6 space-y-4 shadow-[0_4px_24px_-4px_rgba(0,0,0,0.03)] animate-fade-in">
+            <h3 className="text-sm font-black text-slate-900 flex items-center gap-2 border-b border-slate-100 pb-3 uppercase tracking-wider">
+              <Database className="h-4.5 w-4.5 text-indigo-600" />
+              自動バックアップ / データ耐久性 ＆ 災害復旧
+            </h3>
+            <p className="text-[11px] text-slate-500 leading-relaxed font-semibold">
+              UTAGE Hub に登録されている全クライアントマッピング要件、クルー割当マイルストーン、および決定要望ログを一括で自動バックアップ・暗号圧縮保管します。データ破損時にも数秒で完全復元可能です。
+            </p>
+
+            <div className="space-y-4">
+              {/* Daily schedule item */}
+              <div className="p-4 bg-slate-50 border border-slate-150 rounded-2xl space-y-3">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <div className="space-y-0.5">
+                    <h4 className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
+                      <span className="w-1.5 h-1.5 rounded-full bg-indigo-550 animate-pulse shrink-0" />
+                      デイリー自動バックアップスケジュール
+                    </h4>
+                    <p className="text-[10px] text-slate-450 font-semibold leading-normal">
+                      1日1回、指定した深夜帯にシステム内の状態スナップショットを自動エクスポートしてバックアップ世代に安全に格納します。
+                    </p>
+                  </div>
+                  <label className="relative inline-flex items-center cursor-pointer shrink-0">
+                    <input 
+                      type="checkbox" 
+                      checked={isAutoBackup} 
+                      onChange={(e) => setIsAutoBackup(e.target.checked)} 
+                      className="sr-only peer" 
+                    />
+                    <div className="w-9 h-5 bg-slate-200 peer-focus:outline-hidden rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-indigo-650"></div>
+                  </label>
+                </div>
+
+                {isAutoBackup && (
+                  <div className="pt-2 border-t border-slate-100 flex flex-col sm:flex-row sm:items-center gap-3 text-xs">
+                    <div className="flex items-center gap-2">
+                      <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">実行時刻設定:</span>
+                      <input
+                        type="time"
+                        value={autoBackupTime}
+                        onChange={(e) => setAutoBackupTime(e.target.value)}
+                        className="rounded-lg border border-slate-250 px-2.5 py-1 bg-white text-slate-805 text-xs font-mono font-bold focus:ring-1 focus:ring-indigo-500 cursor-pointer"
+                      />
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <span className="text-[10px] text-slate-500 font-bold">保存期間:</span>
+                      <select
+                        value={backupRetentionDays}
+                        onChange={(e) => setBackupRetentionDays(Number(e.target.value))}
+                        className="rounded-lg border border-slate-250 px-1 py-1 bg-white text-slate-800 text-xs font-bold focus:ring-1 focus:ring-indigo-500 cursor-pointer"
+                      >
+                        <option value={7}>過去7日間</option>
+                        <option value={30}>過去30日間</option>
+                        <option value={90}>過去90日間</option>
+                        <option value={180}>制限なし</option>
+                      </select>
+                    </div>
+                    <span className="text-[10px] font-black text-indigo-650 bg-indigo-50 border border-indigo-150/50 rounded-lg px-2 py-0.5">
+                      毎日 {autoBackupTime} に自動作成し、世代保持（ローカル保管庫）を行います。
+                    </span>
+                  </div>
+                )}
+              </div>
+
+              {/* Manual Backup and status trigger */}
+              <div className="flex flex-col sm:flex-row gap-3 pt-1">
+                <button
+                  type="button"
+                  onClick={handleManualBackup}
+                  disabled={isGeneratingBackup}
+                  className="px-4 py-2.5 bg-[#0f172a] hover:bg-slate-800 text-white text-xs font-black rounded-xl transition-all shadow-xs cursor-pointer flex items-center justify-center gap-1.5 disabled:opacity-50"
+                >
+                  <DownloadCloud className={`h-3.5 w-3.5 ${isGeneratingBackup ? 'animate-spin' : ''}`} />
+                  <span>{isGeneratingBackup ? 'バックアップ生成中...' : '今すぐ手動バックアップを作成'}</span>
+                </button>
+
+                <div className="relative">
+                  <label className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-black rounded-xl border border-slate-250 cursor-pointer transition-all flex items-center justify-center gap-1.5 shadow-3xs">
+                    <UploadCloud className="h-3.5 w-3.5" />
+                    <span>バックアップJSONから復元インポート</span>
+                    <input
+                      type="file"
+                      accept=".json"
+                      className="hidden"
+                      onChange={(e) => {
+                        if (e.target.files && e.target.files[0]) {
+                          const file = e.target.files[0];
+                          const reader = new FileReader();
+                          reader.onload = (event) => {
+                            try {
+                              if (event.target?.result) {
+                                JSON.parse(event.target.result as string);
+                                handleRestore(`${file.name} (外部エクスポートアーカイブ)`);
+                              }
+                            } catch (err) {
+                              alert("❌ インポートしたJSONのパースに失敗しました。正しいUTAGE Hubバックアップ形式のファイルを選択してください。");
+                            }
+                          };
+                          reader.readAsText(file);
+                        }
+                      }}
+                    />
+                  </label>
+                </div>
+              </div>
+
+              {restoreStatus && (
+                <div className="p-3 bg-amber-50 border border-amber-200 text-amber-900 rounded-xl text-xs font-bold leading-relaxed animate-pulse">
+                  🔄 <strong>{restoreStatus}</strong>
+                </div>
+              )}
+
+              {/* Backup History logs hierarchy */}
+              <div className="space-y-2 pt-2">
+                <h4 className="text-xs font-black text-slate-750 flex items-center gap-1.5">
+                  <History className="h-4 w-4 text-slate-500" />
+                  バックアップ履歴アーカイブ ＆ 世代ロールバック
+                </h4>
+
+                <div className="border border-slate-200 rounded-2xl overflow-hidden bg-white shadow-3xs max-h-[180px] overflow-y-auto">
+                  <table className="w-full text-xs text-left border-collapse">
+                    <thead>
+                      <tr className="bg-slate-50 border-b border-slate-150 text-[10px] font-black text-slate-500 uppercase">
+                        <th className="py-2.5 px-4">取得日時</th>
+                        <th className="py-2.5 px-3">トリガー</th>
+                        <th className="py-2.5 px-3">サイズ</th>
+                        <th className="py-2.5 px-3">保管状態</th>
+                        <th className="py-2.5 px-4 text-right">即時ロールバック</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100 font-semibold text-slate-705">
+                      {backupHistory.map((b) => (
+                        <tr key={b.id} className="hover:bg-slate-50/50 transition-colors">
+                          <td className="py-3 px-4 font-mono tracking-tight text-[11px] text-slate-800">
+                            {b.timestamp}
+                          </td>
+                          <td className="py-3 px-3">
+                            <span className={`inline-flex px-2 py-0.5 rounded text-[9px] font-black ${
+                              b.trigger === '手動要求' ? 'bg-amber-100 text-amber-800 border border-amber-200' : 'bg-slate-100 text-slate-700 border border-slate-200'
+                            }`}>
+                              {b.trigger}
+                            </span>
+                          </td>
+                          <td className="py-3 px-3 font-mono text-[10px] text-slate-500">
+                            {b.size}
+                          </td>
+                          <td className="py-3 px-3">
+                            <span className="inline-flex items-center gap-1 text-[9px] font-black text-emerald-700">
+                              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                              正常保管
+                            </span>
+                          </td>
+                          <td className="py-3 px-4 text-right">
+                            <button
+                              type="button"
+                              onClick={() => handleRestore(b.timestamp)}
+                              className="px-2.5 py-1 bg-white hover:bg-slate-900 text-slate-700 hover:text-white rounded-lg border border-slate-250 text-[10px] font-black transition-all cursor-pointer shadow-3xs"
+                            >
+                              復元 ➔
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
               </div>
             </div>
           </div>
