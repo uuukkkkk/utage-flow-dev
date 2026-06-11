@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { 
   BookOpen, 
   Search, 
@@ -21,7 +21,14 @@ import {
   HelpCircle,
   ExternalLink,
   ChevronRight,
-  BookMarked
+  BookMarked,
+  Heart,
+  MessageSquare,
+  Bookmark,
+  Sparkles,
+  ChevronDown,
+  ChevronUp,
+  FileText
 } from 'lucide-react';
 import { WikiArticle } from '../types';
 import { motion, AnimatePresence } from 'motion/react';
@@ -32,6 +39,29 @@ interface LearningHubProps {
   simulatedPlan: 'Starter' | 'Pro' | 'Platinum';
   setSimulatedPlan?: React.Dispatch<React.SetStateAction<'Starter' | 'Pro' | 'Platinum'>>;
 }
+
+// Custom Note-style Hashtags mapping defined globally for static enrichment
+const articleTags: Record<string, string[]> = {
+  '1': ['#UTAGE構築', '#マーケティング', '#初心者向け', '#売上最大化'],
+  '2': ['#ファネル設計', '#成約率アップ', '#LP改善', '#成約心理'],
+  '3': ['#決済システム', '#Stripe設定', '#未決済対策', '#顧客サポート'],
+  '4': ['#LINE公式', '#配信戦略', '#ステップ配信', '#LTV向上'],
+  '5': ['#AIライティング', '#時間短縮', '#Gemini', '#プロンプト'],
+  'default': ['#UTAGE', '#ノウハウ', '#ファネル構築', '#実践知見'],
+};
+
+// Generates distinct elegant visual header gradient matching article cover vibe
+const getCoverGradient = (id: string) => {
+  const coverClasses = [
+    'from-rose-100 via-teal-50 to-indigo-100',
+    'from-amber-100 via-orange-50 to-amber-200',
+    'from-sky-100 via-indigo-50 to-pink-100',
+    'from-emerald-100 via-teal-50 to-cyan-100',
+    'from-purple-100 via-violet-50 to-fuchsia-100'
+  ];
+  const index = Math.abs(id.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0)) % coverClasses.length;
+  return coverClasses[index];
+};
 
 export default function LearningHub({ 
   wikiArticles = [], 
@@ -44,6 +74,35 @@ export default function LearningHub({
   const [selectedArticleId, setSelectedArticleId] = useState<string>(wikiArticles[0]?.id || '');
   const [previewMode, setPreviewMode] = useState<'logged_in' | 'public_guest'>('logged_in');
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [showToc, setShowToc] = useState(true);
+
+  // States for 'Suki' (Likes), mock storage
+  const [likesState, setLikesState] = useState<Record<string, { count: number; liked: boolean }>>(() => {
+    // Scaffold initial like counts per ID for media reality
+    const dict: Record<string, { count: number; liked: boolean }> = {};
+    wikiArticles.forEach((art, idx) => {
+      dict[art.id] = {
+        count: 24 + (idx * 17) + (art.title.length * 2),
+        liked: false
+      };
+    });
+    return dict;
+  });
+
+  // Handle clicking "Suki" with heart bumper animation
+  const handleLikeToggle = (id: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setLikesState(prev => {
+      const current = prev[id] || { count: 32, liked: false };
+      return {
+        ...prev,
+        [id]: {
+          count: current.liked ? current.count - 1 : current.count + 1,
+          liked: !current.liked
+        }
+      };
+    });
+  };
 
   // Categories list
   const categories = ['全て', 'ファネル設計', 'UTAGE設定', 'LINE・配信', 'Stripe決済', 'AI活用', 'マーケティング知見'];
@@ -55,21 +114,39 @@ export default function LearningHub({
     'Platinum': 3
   };
 
-  // Handle article selection
+  // Force-select active article
   const activeArticle = useMemo(() => {
     return wikiArticles.find(a => a.id === selectedArticleId) || wikiArticles[0] || null;
   }, [wikiArticles, selectedArticleId]);
 
+  // Read time & character calculations
+  const textStats = useMemo(() => {
+    if (!activeArticle) return { chars: 0, mins: 1 };
+    const length = activeArticle.content.length + (activeArticle.excerpt?.length || 0);
+    return {
+      chars: length,
+      mins: Math.max(1, Math.ceil(length / 500)) // 500 characters per minute reading pace
+    };
+  }, [activeArticle]);
+
+  // Extract headings for Table of Contents
+  const tableOfContents = useMemo(() => {
+    if (!activeArticle) return [];
+    const lines = activeArticle.content.split('\n');
+    return lines
+      .filter(line => line.startsWith('### ') || line.startsWith('#### '))
+      .map((line, index) => {
+        const isSub = line.startsWith('#### ');
+        const text = line.replace(/### |#### /, '').trim();
+        return { id: `toc-${index}`, text, isSub };
+      });
+  }, [activeArticle]);
+
   // Is accessible in the current mode
   const checkAccessibility = (article: WikiArticle) => {
     if (previewMode === 'public_guest') {
-      // In guest mode, let's treat 'Starter' required plan as the base member level.
-      // E.g. Articles requiring any plan (Starter, Pro, Platinum) are member-only, hence locked for anonymous guests.
-      // If of high quality, anonymous guests can see excerpts but not full bodies.
-      // We assume Starter/Pro/Platinum are all member-restricted.
       return false; 
     } else {
-      // Logged-in mode
       const userWeight = planWeights[simulatedPlan] || 2;
       const articleWeight = planWeights[article.requiredPlan || 'Starter'];
       return userWeight >= articleWeight;
@@ -85,13 +162,21 @@ export default function LearningHub({
     });
   };
 
-  // Filtered articles
+  // Reset selected item if list updates or filters push active out of view
   const filteredArticles = useMemo(() => {
     return wikiArticles.filter(art => {
+      const cleanSearch = searchQuery.trim().toLowerCase();
+      
+      const hashtags = articleTags[art.id] || articleTags['default'];
+      const hasTagMatch = hashtags.some(t => t.toLowerCase().includes(cleanSearch));
+
       const matchSearch = 
-        art.title.toLowerCase().includes(searchQuery.toLowerCase()) || 
-        art.content.toLowerCase().includes(searchQuery.toLowerCase()) || 
-        (art.excerpt && art.excerpt.toLowerCase().includes(searchQuery.toLowerCase()));
+        cleanSearch === '' ||
+        art.title.toLowerCase().includes(cleanSearch) || 
+        art.content.toLowerCase().includes(cleanSearch) || 
+        (art.excerpt && art.excerpt.toLowerCase().includes(cleanSearch)) ||
+        art.category.toLowerCase().includes(cleanSearch) || 
+        hasTagMatch;
       
       const matchCategory = selectedCategory === '全て' || art.category === selectedCategory;
       
@@ -99,35 +184,52 @@ export default function LearningHub({
     });
   }, [wikiArticles, searchQuery, selectedCategory]);
 
-  // Quick helper to render a light markdown style text block nicely
+  // Auto focus first item on list update if selection not in filtered
+  useEffect(() => {
+    if (filteredArticles.length > 0) {
+      const containsActive = filteredArticles.some(a => a.id === selectedArticleId);
+      if (!containsActive) {
+        setSelectedArticleId(filteredArticles[0].id);
+      }
+    }
+  }, [filteredArticles, selectedArticleId]);
+
+  // Custom Formatted rendering with note.com beautiful spacing
   const renderFormattedContent = (content: string) => {
     const lines = content.split('\n');
     return lines.map((line, idx) => {
       if (line.startsWith('### ')) {
+        const headingText = line.replace('### ', '');
         return (
-          <h3 key={idx} className="text-sm font-black text-slate-900 mt-6 mb-2.5 pb-1 border-b border-slate-100 flex items-center gap-2">
-            <span className="w-1.5 h-3.5 bg-indigo-500 rounded-xs inline-block" />
-            {line.replace('### ', '')}
+          <h3 
+            key={idx} 
+            className="text-[17px] font-black tracking-tight text-slate-900 mt-9 mb-4 pb-2 border-b border-rose-100 flex items-center gap-2.5 leading-normal"
+            id={`heading-${headingText}`}
+          >
+            <span className="w-1.5 h-6 bg-rose-400 rounded-full" />
+            {headingText}
           </h3>
         );
       }
       if (line.startsWith('#### ')) {
+        const subHeadingText = line.replace('#### ', '');
         return (
-          <h4 key={idx} className="text-xs font-extrabold text-slate-800 mt-4 mb-2 flex items-center gap-1">
-            <span className="w-1 h-3 bg-teal-500 rounded-xs inline-block" />
-            {line.replace('#### ', '')}
+          <h4 
+            key={idx} 
+            className="text-[13.5px] font-bold text-slate-800 mt-6 mb-3 flex items-center gap-2 pl-1.5 border-l-2 border-indigo-400"
+          >
+            {subHeadingText}
           </h4>
         );
       }
       if (line.startsWith('- ') || line.startsWith('* ')) {
         const text = line.substring(2);
-        // Highlight bold texts within list item
         const boldParts = text.split('**');
         return (
-          <li key={idx} className="ml-4 pl-1 list-disc text-slate-650 text-xs my-1 text-justify leading-relaxed">
+          <li key={idx} className="ml-5 pl-1 list-disc text-slate-700 text-xs leading-relaxed my-2.5 text-justify antialiased">
             {boldParts.map((part, pIdx) => {
               if (pIdx % 2 === 1) {
-                return <strong key={pIdx} className="text-slate-900 font-bold">{part}</strong>;
+                return <strong key={pIdx} className="text-slate-950 font-bold border-b border-indigo-100 pb-0.5">{part}</strong>;
               }
               return part;
             })}
@@ -135,34 +237,30 @@ export default function LearningHub({
         );
       }
       if (line.startsWith('```')) {
-        if (line.trim() === '```') return null; // closing backticks
-        return null; // Handle code blocks with pre-wrap representation instead of multi-rendering
+        return null;
       }
 
-      // Check if it's inside a code block sequence
-      let isCodeBlock = false;
-      // Look backward to count backticks
+      // Inside a markdown script/code blocks check
       let backtickCount = 0;
       for (let i = 0; i < idx; i++) {
         if (lines[i].startsWith('```')) backtickCount++;
       }
       if (backtickCount % 2 === 1) {
         return (
-          <div key={idx} className="bg-slate-900 text-slate-300 font-mono text-[10.5px] p-3 rounded-xl my-1 overflow-x-auto border border-slate-800 leading-relaxed max-w-full">
+          <div key={idx} className="bg-slate-900 text-teal-300 font-mono text-[11px] p-4 rounded-xl my-4 overflow-x-auto border border-slate-800 leading-relaxed shadow-3xs">
             {line}
           </div>
         );
       }
 
-      if (line.trim() === '') return <div key={idx} className="h-2" />;
+      if (line.trim() === '') return <div key={idx} className="h-4" />;
 
-      // Normal text lines with potential bold triggers
       const parts = line.split('**');
       return (
-        <p key={idx} className="text-slate-650 text-xs leading-relaxed text-justify my-1.5 font-medium">
+        <p key={idx} className="text-[12.5px] text-slate-750 leading-[2.1] text-justify font-normal my-3.5 antialiased tracking-wide">
           {parts.map((part, pIdx) => {
             if (pIdx % 2 === 1) {
-              return <strong key={pIdx} className="text-slate-900 font-bold">{part}</strong>;
+              return <strong key={pIdx} className="text-slate-950 font-extrabold bg-amber-50 px-1 py-0.5 rounded-sm">{part}</strong>;
             }
             return part;
           })}
@@ -174,124 +272,130 @@ export default function LearningHub({
   return (
     <div className="space-y-6 text-slate-800">
       
-      {/* 1. Header Banner */}
-      <div className="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-950 text-white rounded-3xl p-6 relative overflow-hidden shadow-sm border border-slate-800">
-        <div className="absolute top-0 right-0 w-80 h-80 bg-indigo-500/10 rounded-full blur-3xl -z-10" />
+      {/* 1. Header Banner - Elegant minimal Cover style */}
+      <div className="bg-white rounded-3xl border border-slate-200 p-6 md:p-8 relative overflow-hidden shadow-2xs">
+        <div className="absolute top-0 right-0 w-96 h-96 bg-gradient-to-br from-rose-100/30 to-teal-100/20 rounded-full blur-3xl -z-10" />
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
-          <div className="space-y-2">
-            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-indigo-500/20 text-indigo-300 text-xs font-semibold border border-indigo-500/30">
-              <BookMarked className="h-3.5 w-3.5" />
-              <span>学習ナレッジ・知見Wikiポータル</span>
+          <div className="space-y-3">
+            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-rose-50 text-rose-600 text-xs font-bold border border-rose-100">
+              <Sparkles className="h-3.5 w-3.5" />
+              <span>本質マーケティング自習ハブ</span>
             </div>
-            <h2 className="text-2xl font-black tracking-tight flex items-center gap-2">
-              <span>学習・知見ナレッジベース</span>
+            <h2 className="text-2xl md:text-3xl font-black tracking-tight text-slate-900">
+              知見Wiki & 学習ナレッジベース
             </h2>
-            <p className="text-slate-400 text-xs max-w-2xl">
-              ファネル設計ノウハウから、UTAGEの設定細部、Stripe滞納回収、LINEステップの配信攻略まで。
-              管理者が発信する最新の実証済みマーケティング知見を一元閲覧・自習できるハブです。
+            <p className="text-slate-500 text-xs leading-relaxed max-w-2xl">
+              「note」のような快適な読み心地で、UTAGEのプロが実践している本質的なノウハウを提供します。<br />
+              一般公開のオープン講義と、契約プラン別メンバー限定のプレミアム記事に分けて自習学習が可能です。
             </p>
           </div>
 
-          {/* Quick Metrics */}
-          <div className="shrink-0 bg-white/5 border border-white/10 rounded-2xl p-4 backdrop-blur-xs flex items-center gap-3">
-            <div className="text-right">
-              <span className="text-[10px] uppercase tracking-wider text-slate-400 block font-bold">総配信ノウハウ</span>
-              <span className="text-lg font-black text-indigo-300 font-mono">{wikiArticles.length} <span className="text-xs text-white">記事</span></span>
+          {/* Core Metrics */}
+          <div className="shrink-0 bg-slate-50/80 border border-slate-200/60 rounded-2xl p-4 flex items-center gap-4">
+            <div className="text-left">
+              <span className="text-[10px] font-black text-slate-400 block tracking-wider">知見ストック数</span>
+              <span className="text-xl font-mono font-black text-slate-800">{wikiArticles.length} <span className="text-[11px] font-sans font-medium text-slate-500">記事</span></span>
             </div>
-            <div className="w-[1px] h-8 bg-white/10" />
-            <div className="text-right">
-              <span className="text-[10px] uppercase tracking-wider text-slate-400 block font-bold">自習可能レベル</span>
-              <span className="text-xs font-black bg-indigo-600 px-2 py-0.5 rounded text-white">{simulatedPlan} 会員</span>
+            <div className="w-[1px] h-9 bg-slate-200" />
+            <div className="text-left">
+              <span className="text-[10px] font-black text-slate-400 block tracking-wider">シミュレーション契約</span>
+              <span className="text-xs font-extrabold bg-slate-900 px-2 py-0.5 rounded-lg text-white font-mono block mt-1">{simulatedPlan}</span>
             </div>
           </div>
         </div>
       </div>
 
-      {/* 2. Controls Segment (Public/Guest Visibility Switcher) */}
-      <div className="bg-white rounded-2xl border border-slate-200/80 p-4 shadow-3xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        
-        {/* Toggle Mode: Logged-in view simulation vs General Public guest simulation */}
-        <div className="flex items-center gap-2">
-          <span className="text-xs font-extrabold text-slate-500">閲覧シミュレーター:</span>
-          <div className="bg-slate-100 p-0.5 rounded-xl border border-slate-200 flex items-center">
+      {/* 2. Interactive Visibility & Simulation Switcher (Modern Flat Styling) */}
+      <div className="bg-slate-50 rounded-2xl border border-slate-200 p-3.5 flex flex-col md:flex-row items-start md:items-center justify-between gap-3 text-xs">
+        <div className="flex items-center gap-2 shrink-0">
+          <span className="font-extrabold text-slate-500">閲覧権限の切替テスト:</span>
+          <div className="bg-slate-200/70 p-0.5 rounded-xl border border-slate-300 flex items-center">
             <button
               onClick={() => setPreviewMode('logged_in')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+              className={`px-3 py-1.5 rounded-lg font-extrabold transition-all cursor-pointer flex items-center gap-1.5 ${
                 previewMode === 'logged_in'
-                  ? 'bg-white text-indigo-700 shadow-2xs'
+                  ? 'bg-white text-slate-900 shadow-2xs'
                   : 'text-slate-500 hover:text-slate-800'
               }`}
             >
-              <User className="h-3.5 w-3.5 text-indigo-505" />
-              <span>ログイン会員表示</span>
+              <User className="h-3.5 w-3.5 text-indigo-600" />
+              <span>会員（ログイン済）</span>
             </button>
             <button
               onClick={() => setPreviewMode('public_guest')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+              className={`px-3 py-1.5 rounded-lg font-extrabold transition-all cursor-pointer flex items-center gap-1.5 ${
                 previewMode === 'public_guest'
-                  ? 'bg-white text-teal-700 shadow-2xs'
+                  ? 'bg-white text-rose-600 shadow-2xs'
                   : 'text-slate-500 hover:text-slate-800'
               }`}
             >
-              <Globe className="h-3.5 w-3.5 text-teal-650" />
-              <span>一般公開（ゲスト表示）</span>
+              <Globe className="h-3.5 w-3.5 text-rose-500" />
+              <span>一般公開（未ログイン）</span>
             </button>
           </div>
         </div>
 
-        {/* Info label based on state */}
-        <div className="text-[11px] leading-relaxed text-slate-500 max-w-sm flex items-start gap-1.5">
-          <AlertCircle className="h-4 w-4 text-slate-400 shrink-0 mt-0.5" />
+        <div className="flex items-center gap-1.5 text-[11px] text-slate-500">
+          <AlertCircle className="h-4 w-4 text-slate-400 shrink-0" />
           <span>
             {previewMode === 'logged_in' ? (
-              <>管理者 console でアサインした <strong>{simulatedPlan} 契約プラン</strong> として見れる内容を表示しています。他契約用はロック表示。</>
+              <>擬似ログイン：現在、あなたのアカウント <strong>[{simulatedPlan}]</strong> 用のコンテンツがアクティブです。</>
             ) : (
-              <>ログインしていない<strong>一般訪問者（非契約ゲスト）</strong>が見られる公開範囲です。有料ノウハウは閲覧制限が自動適用されます。</>
+              <>擬似ゲスト：非会員ステータス。プレミアム会員向けの独自ノウハウは「プレビュー（note有料風）」として表示されます。</>
             )}
           </span>
         </div>
       </div>
 
-      {/* 3. Main Filter & Search Workspace */}
+      {/* 3. Main Workspace Area */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
         
-        {/* Left Side: Article Navigation Drawer Block (5 Cols) */}
+        {/* Left column (5 Cols) - note styled Article List Drawer */}
         <div className="lg:col-span-5 space-y-4">
           
-          {/* Filtering Widgets */}
+          {/* Elegant Sidebar Filters */}
           <div className="bg-white rounded-2xl border border-slate-200 p-4 space-y-4 shadow-3xs">
             
-            {/* Search */}
+            {/* Search Input Custom Box */}
             <div className="relative">
               <span className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
-                <Search className="h-4 w-4" />
+                <Search className="h-4 w-4 text-slate-400" />
               </span>
               <input
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="知見・キーワードを検索..."
-                className="w-full text-xs font-bold rounded-xl border border-slate-250 bg-slate-50/50 pl-10 pr-4 py-2.5 text-slate-850 placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:bg-white"
+                placeholder="キーワード、または #ハッシュタグ で検索..."
+                className="w-full text-xs font-bold rounded-xl border border-slate-250 bg-slate-50/50 pl-10 pr-4 py-2.5 text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-400 focus:bg-white transition-all"
               />
+              {searchQuery && (
+                <button 
+                  onClick={() => setSearchQuery('')}
+                  className="absolute right-3.5 top-1/2 -translate-y-1/2 text-[10px] font-bold text-slate-400 hover:text-slate-650"
+                >
+                  クリア
+                </button>
+              )}
             </div>
 
-            {/* Category horizontal badges */}
-            <div className="space-y-1.5">
-              <label className="text-[10px] font-black text-slate-400 tracking-wider uppercase flex items-center gap-1">
+            {/* Beautiful category list styled minimal style */}
+            <div className="space-y-2">
+              <label className="text-[10px] font-black text-slate-400 tracking-wider uppercase flex items-center gap-1.5">
                 <Layers className="h-3.5 w-3.5" />
-                <span>カテゴリ別絞り込み</span>
+                <span>カテゴリ・タグから選ぶ</span>
               </label>
-              <div className="flex flex-wrap gap-1.5 pt-1">
+              
+              <div className="flex flex-wrap gap-1">
                 {categories.map((cat) => {
                   const isActive = selectedCategory === cat;
                   return (
                     <button
                       key={cat}
                       onClick={() => setSelectedCategory(cat)}
-                      className={`px-2.5 py-1 rounded-lg text-[11px] font-bold cursor-pointer transition-all ${
+                      className={`px-3 py-1.5 rounded-lg text-xs font-black cursor-pointer transition-all ${
                         isActive
-                          ? 'bg-indigo-650 text-white shadow-xs'
-                          : 'bg-slate-50 text-slate-600 hover:bg-slate-100 border border-slate-150'
+                          ? 'bg-slate-900 text-white shadow-3xs'
+                          : 'bg-slate-50 text-slate-600 hover:bg-slate-100/80 border border-slate-200/60'
                       }`}
                     >
                       {cat}
@@ -302,45 +406,67 @@ export default function LearningHub({
             </div>
           </div>
 
-          {/* Article List Stack */}
-          <div className="space-y-3 max-h-[550px] overflow-y-auto pr-1">
+          {/* List Section Title */}
+          <div className="flex items-center justify-between px-1">
+            <span className="text-[11px] font-extrabold text-slate-450 tracking-wide uppercase">
+              ノウハウ記事一覧 ({filteredArticles.length}件)
+            </span>
+          </div>
+
+          {/* Editorial Note-Style Scrollable Article List */}
+          <div className="space-y-3 max-h-[700px] overflow-y-auto pr-1">
             <AnimatePresence mode="popLayout">
               {filteredArticles.length > 0 ? (
                 filteredArticles.map((art) => {
                   const isActive = activeArticle?.id === art.id;
                   const isAccessible = checkAccessibility(art);
+                  const hashtags = articleTags[art.id] || articleTags['default'];
+                  
+                  // Likes Count Simulation
+                  const likesInfo = likesState[art.id] || { count: 35, liked: false };
                   
                   return (
                     <motion.div
                       key={art.id}
                       layout
-                      initial={{ opacity: 0, y: 5 }}
+                      initial={{ opacity: 0, y: 10 }}
                       animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, scale: 0.95 }}
+                      exit={{ opacity: 0, scale: 0.98 }}
+                      transition={{ duration: 0.2 }}
                       onClick={() => setSelectedArticleId(art.id)}
-                      className={`rounded-2xl p-4 border transition-all cursor-pointer text-left space-y-2 ${
+                      className={`rounded-2xl p-4.5 border text-left transition-all cursor-pointer relative ${
                         isActive
-                          ? 'bg-indigo-50/70 border-indigo-300 shadow-sm ring-1 ring-indigo-300/40'
-                          : 'bg-white border-slate-200/90 hover:border-slate-300 hover:shadow-3xs'
+                          ? 'bg-gradient-to-br from-white to-slate-50/20 border-slate-800 shadow-sm ring-[1.5px] ring-slate-800'
+                          : 'bg-white border-slate-200 hover:border-slate-350 hover:shadow-2xs'
                       }`}
                     >
-                      <div className="flex items-center justify-between gap-2">
-                        <span className="bg-slate-100 text-slate-700 text-[9px] font-black rounded-md px-2 py-0.5 border border-slate-200">
-                          {art.category}
-                        </span>
+                      {/* Top author & status block */}
+                      <div className="flex items-center justify-between gap-2.5 mb-2.5">
+                        
+                        {/* Rounded Profile Avatar Icon */}
+                        <div className="flex items-center gap-2">
+                          <div className="w-6 h-6 rounded-full bg-slate-900 border border-slate-800/20 flex items-center justify-center text-[10px] text-white font-bold tracking-tight">
+                            {art.author.substring(0, 1)}
+                          </div>
+                          <div>
+                            <span className="text-[11px] font-extrabold text-slate-700 block tracking-tight">
+                              {art.author}
+                            </span>
+                          </div>
+                        </div>
 
-                        {/* Lock / Unlock Badges */}
-                        <div className="flex items-center gap-1 shrink-0">
+                        {/* Beautiful Note.com Lock/Unlock Indicator */}
+                        <div className="shrink-0">
                           {previewMode === 'public_guest' ? (
-                            <span className="bg-amber-50 text-amber-700 border border-amber-100 px-1.5 py-0.5 rounded text-[8px] font-black flex items-center gap-0.5">
-                              <Lock className="h-2 w-2" />
-                              <span>ログイン限定</span>
+                            <span className="bg-amber-50 text-amber-700 border border-amber-100/80 px-2 py-0.5 rounded-full text-[9px] font-bold flex items-center gap-1">
+                              <Lock className="h-2.5 w-2.5" />
+                              <span>限定講義</span>
                             </span>
                           ) : (
-                            <span className={`px-1.5 py-0.5 rounded text-[8px] font-black flex items-center gap-0.5 ${
+                            <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold flex items-center gap-1 ${
                               isAccessible 
-                                ? 'bg-emerald-50 text-emerald-700 border border-emerald-100' 
-                                : 'bg-rose-50 text-rose-700 border border-rose-100 animate-pulse'
+                                ? 'bg-emerald-50 text-emerald-800 border border-emerald-100' 
+                                : 'bg-red-50 text-red-605 border border-red-105 animate-pulse'
                             }`}>
                               {isAccessible ? <Unlock className="h-2.5 w-2.5" /> : <Lock className="h-2.5 w-2.5" />}
                               <span>
@@ -351,211 +477,386 @@ export default function LearningHub({
                         </div>
                       </div>
 
-                      <h4 className="font-extrabold text-xs text-slate-900 leading-snug">
-                        {art.title}
-                      </h4>
+                      {/* Cover Photo simulation - subtle color pill */}
+                      <div className="space-y-1.5 mb-2.5">
+                        <span className="text-[10px] font-extrabold text-slate-400 tracking-wider">
+                          {art.category}
+                        </span>
+                        <h4 className="font-black text-xs md:text-sm text-slate-905 leading-snug tracking-tight hover:text-rose-600 transition-colors">
+                          {art.title}
+                        </h4>
+                      </div>
 
-                      <p className="text-slate-500 text-[11px] leading-relaxed text-justify line-clamp-2">
+                      {/* Excerpt */}
+                      <p className="text-slate-500 text-[11px] leading-relaxed line-clamp-2 text-justify font-medium mb-3">
                         {art.excerpt}
                       </p>
 
-                      <div className="flex items-center justify-between text-[10px] text-slate-400 pt-1 border-t border-slate-50">
-                        <span className="font-semibold">寄稿: {art.author}</span>
-                        <span className="font-mono">{art.publishedAt}</span>
+                      {/* Hashtags display */}
+                      <div className="flex flex-wrap gap-1.5 mb-3.5">
+                        {hashtags.slice(0, 3).map((tag) => (
+                          <span 
+                            key={tag}
+                            className="text-[10.5px] text-slate-450 hover:text-slate-800 transition-colors font-medium"
+                          >
+                            {tag}
+                          </span>
+                        ))}
+                      </div>
+
+                      {/* Note.com typical footer metrics */}
+                      <div className="flex items-center justify-between text-[10px] text-slate-400 pt-2.5 border-t border-slate-100">
+                        <span className="font-mono flex items-center gap-1">
+                          <Clock className="h-3 w-3" />
+                          <span>読了目安 約{Math.max(1, Math.ceil((art.content.length || 200) / 450))}分</span>
+                        </span>
+                        
+                        {/* Like micro-count in list */}
+                        <button
+                          type="button"
+                          onClick={(e) => handleLikeToggle(art.id, e)}
+                          className={`flex items-center gap-1 px-1.5 py-0.5 rounded-md transition-colors ${
+                            likesInfo.liked ? 'text-rose-500 font-bold' : 'text-slate-400 hover:text-rose-400'
+                          }`}
+                        >
+                          <Heart className={`h-3.5 w-3.5 ${likesInfo.liked ? 'fill-rose-500' : ''}`} />
+                          <span className="font-mono">{likesInfo.count}</span>
+                        </button>
                       </div>
                     </motion.div>
                   );
                 })
               ) : (
-                <div className="bg-white rounded-2xl border border-slate-200 p-8 text-center space-y-2">
-                  <div className="w-10 h-10 rounded-full bg-slate-50 flex items-center justify-center text-slate-400 mx-auto">
-                    <HelpCircle className="h-5 w-5" />
+                <div className="bg-white rounded-3xl border border-slate-205 p-12 text-center space-y-3">
+                  <div className="w-12 h-12 rounded-full bg-slate-50 flex items-center justify-center text-slate-400 mx-auto">
+                    <Search className="h-6 w-6" />
                   </div>
-                  <p className="text-xs font-black text-slate-800">一致する知見・ナレッジがありません。</p>
-                  <p className="text-[10px] text-slate-400">検索フィルターの文字を消すか、他のカテゴリを試してください。</p>
+                  <p className="text-xs font-black text-slate-800">条件に合う知見・講義が見つかりません</p>
+                  <p className="text-[10px] text-slate-400">
+                    検索キーワードのつづりを確認するか、他のカテゴリバッジを選択しなおしてください。
+                  </p>
                 </div>
               )}
             </AnimatePresence>
           </div>
         </div>
 
-        {/* Right Side: Detailed Reader Workspace Display (7 Cols) */}
+        {/* Right column (7 Cols) - Detailed Modern Note Editorial Reader */}
         <div className="lg:col-span-7">
           <AnimatePresence mode="wait">
             {activeArticle ? (
-              <motion.div
+              <motion.article
                 key={activeArticle.id + '-' + previewMode + '-' + simulatedPlan}
-                initial={{ opacity: 0, x: 10 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: -10 }}
-                transition={{ duration: 0.18 }}
-                className="bg-white rounded-3xl border border-slate-200/95 p-6 shadow-xs space-y-5 text-left relative min-h-[500px]"
+                initial={{ opacity: 0, scale: 0.99, y: 5 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.99, y: -5 }}
+                transition={{ duration: 0.22, ease: 'easeOut' }}
+                className="bg-white rounded-3xl border border-slate-200/95 overflow-hidden shadow-xs text-left text-slate-800 flex flex-col min-h-[600px]"
               >
-                {/* Ribbon Category & Operations Bar */}
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-3">
-                  <div className="flex items-center gap-2">
-                    <span className="bg-indigo-50 text-indigo-800 border border-indigo-150 rounded-lg px-2.5 py-0.5 text-[10px] font-black uppercase">
-                      {activeArticle.category}
-                    </span>
-                    <span className="text-slate-400 text-xs">/</span>
-                    <span className="text-[10px] text-slate-400 font-mono flex items-center gap-1">
-                      <Calendar className="h-3.5 w-3.5" />
-                      <span>{activeArticle.publishedAt} 公開</span>
-                    </span>
-                  </div>
-
-                  {/* Share public simulation button */}
-                  <div className="flex items-center gap-1.5 shrink-0 select-none">
-                    <button
-                      onClick={() => handleCopyLink(activeArticle.id)}
-                      className={`text-[10px] font-bold px-3 py-1.5 rounded-lg border flex items-center gap-1 cursor-pointer transition-all ${
-                        copiedId === activeArticle.id
-                          ? 'bg-emerald-50 text-emerald-800 border-emerald-300'
-                          : 'bg-slate-50 text-slate-600 hover:bg-slate-100 border-slate-200'
-                      }`}
-                    >
-                      {copiedId === activeArticle.id ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
-                      <span>{copiedId === activeArticle.id ? 'コピー完了' : '一般公開用リンクを共有'}</span>
-                    </button>
+                
+                {/* Note illustration cover placeholder at top */}
+                <div className={`h-24 md:h-28 bg-gradient-to-r ${getCoverGradient(activeArticle.id)} opacity-85 relative flex items-end p-4 border-b border-slate-100`}>
+                  <div className="absolute top-4 right-4 bg-white/85 backdrop-blur-xs text-[9px] font-black px-2 py-1 rounded-md text-slate-800 uppercase tracking-wider font-mono shadow-3xs">
+                    {activeArticle.category}
                   </div>
                 </div>
 
-                {/* Article Header Title */}
-                <div className="space-y-1">
-                  <h3 className="text-base md:text-lg font-black text-slate-900 leading-snug">
-                    {activeArticle.title}
-                  </h3>
-                  <div className="flex items-center gap-1.5 text-xs text-slate-400 font-semibold">
-                    <span>著者: {activeArticle.author}</span>
-                  </div>
-                </div>
-
-                {/* Excerpt Lead summary */}
-                <div className="bg-slate-50 border-l-4 border-indigo-500 rounded-xl p-4 text-[11.5px] leading-relaxed text-slate-600 text-justify font-medium">
-                  <strong>💡 要約ロードマップ:</strong> {activeArticle.excerpt}
-                </div>
-
-                {/* Article Body Content with Auth Constraint Evaluation */}
-                <div className="relative pt-2">
-                  {checkAccessibility(activeArticle) ? (
-                    <div className="space-y-3 prose max-w-none text-slate-700">
-                      {renderFormattedContent(activeArticle.content)}
-
-                      {/* Cool interaction helper to simulation apply to marketing */}
-                      <div className="mt-8 bg-indigo-50/50 border border-indigo-100 rounded-2xl p-4 flex flex-col md:flex-row items-center justify-between gap-4">
-                        <div className="space-y-1 text-left">
-                          <strong className="text-indigo-950 font-black text-xs flex items-center gap-1">
-                            <Flame className="h-4 w-4 text-amber-500 animate-pulse" />
-                            <span>UTAGEでの設定・実践に移しますか？</span>
-                          </strong>
-                          <p className="text-slate-500 text-[10px] font-semibold leading-normal">
-                            このマーケティング知見に沿ったLP・自動ステップ・決済設定テンプレートを、自身の案件環境に自動転写できます。
-                          </p>
-                        </div>
-                        <button
-                          type="button"
-                          onClick={() => alert('🚀 同期成功: お使いのUTAGE構築環境へ、知見に基づいた「カスタム連動設定」をマージ適用しました。')}
-                          className="px-3.5 py-1.5 bg-indigo-650 hover:bg-indigo-700 text-white font-extrabold text-[10.5px] rounded-lg cursor-pointer transition-all shadow-xs flex items-center gap-1 shrink-0"
-                        >
-                          <span>設定マニュアル案をUTAGEに自動連携</span>
-                          <ArrowRight className="h-3.5 w-3.5" />
-                        </button>
+                {/* Primary Content Container */}
+                <div className="p-6 md:p-8 space-y-6 flex-1">
+                  
+                  {/* Article main info metadata & reading level indicators */}
+                  <div className="flex flex-wrap items-center justify-between gap-4 border-b border-slate-100 pb-4">
+                    <div className="flex items-center gap-3">
+                      {/* Creator Round Logo avatar like note.com */}
+                      <div className="w-9 h-9 rounded-full bg-slate-900 border border-slate-800/20 flex items-center justify-center font-black text-xs text-white shadow-3xs">
+                        {activeArticle.author.substring(0, 1)}
+                      </div>
+                      <div>
+                        <span className="text-xs font-black text-slate-900 block">{activeArticle.author}</span>
+                        <span className="text-[10.5px] text-slate-400 block tracking-tight">UTAGE公認プロフェッショナル</span>
                       </div>
                     </div>
-                  ) : (
-                    /* Lockout paywall / anonymous guest visual blur screen */
-                    <div className="relative">
-                      {/* Teaser content snippet slightly visible to trigger user's appetite */}
-                      <div className="space-y-3 select-none pointer-events-none opacity-30 filter blur-xs">
-                        <h4 className="text-sm font-black text-slate-900 mt-6 mb-2.5 pb-1 border-b border-slate-100">
-                          ### 施策：ドリップコンテンツ適用レシピ
-                        </h4>
-                        <p className="text-xs text-slate-650 text-justify leading-relaxed">
-                          この手順を行うことで、サロン継続離脱率をこれまでの実績データから40%以上カットさせることに成功しました。
-                        </p>
-                        <p className="text-xs text-slate-650 text-justify leading-relaxed">
-                          1. まずUTAGEの管理画面へログイン。
-                          2. 対象の会員制コース編集画面へと移行して、「段階公開/ドリップ」のスケジュールルールを「会員追加時からの経過日数」アサインします。
-                        </p>
-                      </div>
 
-                      {/* Paywall Overlay */}
-                      <div className="absolute inset-0 bg-gradient-to-t from-white via-white/95 to-transparent flex flex-col items-center justify-center text-center p-6 pt-10">
-                        <div className="max-w-sm space-y-4 bg-white/95 border border-slate-250 rounded-2xl p-5 shadow-lg relative -top-3">
-                          <div className="w-11 h-11 rounded-full bg-rose-50 flex items-center justify-center text-rose-500 mx-auto border border-rose-100 shadow-3xs">
-                            <Lock className="h-5 w-5" />
-                          </div>
-                          
-                          {previewMode === 'public_guest' ? (
-                            <div className="space-y-1.5">
-                              <h4 className="text-xs font-black text-slate-900 flex items-center justify-center gap-1">
-                                <span>🔒 契約ユーザー(ログイン)限定ノウハウ</span>
-                              </h4>
-                              <p className="text-[10px] text-slate-500 leading-relaxed font-medium">
-                                こちらの記事は「{activeArticle.requiredPlan}プラン」以上ご契約のアカウント会員限定コンテンツです。
-                                一般の訪問者（ゲスト）は閲覧できません。
-                              </p>
-                              <div className="pt-2">
+                    <div className="flex items-center gap-2.5 text-xs text-slate-400 select-none">
+                      <span className="font-mono flex items-center gap-1">
+                        <Calendar className="h-3.5 w-3.5 text-slate-400" />
+                        <span>{activeArticle.publishedAt}</span>
+                      </span>
+                      <span>•</span>
+                      <span className="font-mono flex items-center gap-1 bg-slate-50 border border-slate-100 px-2 py-0.5 rounded-md">
+                        <Clock className="h-3.5 w-3.5 text-slate-400" />
+                        <span>約{textStats.mins}分 ({textStats.chars}字)</span>
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Article Title */}
+                  <div className="space-y-4">
+                    <h1 className="text-xl md:text-2xl font-black text-slate-900 leading-snug tracking-tight">
+                      {activeArticle.title}
+                    </h1>
+
+                    {/* Rich Note Hashtags display layout */}
+                    <div className="flex flex-wrap gap-2 pt-1">
+                      {(articleTags[activeArticle.id] || articleTags['default']).map((tag) => (
+                        <button
+                          key={tag}
+                          onClick={() => {
+                            setSearchQuery(tag); // Instantly set filter to query and apply
+                            // Move window scroll back to grid if on mobile
+                            const elem = document.getElementById('mobile-sidebar-toggle');
+                            if (elem) elem.scrollIntoView({ behavior: 'smooth' });
+                          }}
+                          className="bg-slate-100/80 hover:bg-rose-50 hover:text-rose-600 text-[10.5px] font-semibold text-slate-650 px-2.5 py-1 rounded-full transition-all cursor-pointer border border-slate-150"
+                        >
+                          {tag}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Dynamic parsed Table of Contents (note styled Accordion) */}
+                  {tableOfContents.length > 0 && (
+                    <div className="bg-slate-50 border border-slate-200/80 rounded-2xl p-4.5 space-y-3">
+                      <button 
+                        onClick={() => setShowToc(!showToc)}
+                        className="w-full flex items-center justify-between font-black text-xs text-slate-850 focus:outline-none"
+                      >
+                        <span className="flex items-center gap-1.5">
+                          <FileText className="h-4 w-4 text-slate-400" />
+                          <span>目次</span>
+                        </span>
+                        {showToc ? <ChevronUp className="h-4 w-4 text-slate-500" /> : <ChevronDown className="h-4 w-4 text-slate-500" />}
+                      </button>
+
+                      <AnimatePresence>
+                        {showToc && (
+                          <motion.div 
+                            initial={{ height: 0, opacity: 0 }}
+                            animate={{ height: 'auto', opacity: 1 }}
+                            exit={{ height: 0, opacity: 0 }}
+                            className="overflow-hidden"
+                          >
+                            <nav className="space-y-1.5 pt-2 border-t border-slate-200/50">
+                              {tableOfContents.map((el, i) => (
                                 <button
-                                  type="button"
-                                  onClick={() => setPreviewMode('logged_in')}
-                                  className="w-full py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-[10.5px] rounded-lg transition-all cursor-pointer flex items-center justify-center gap-1"
+                                  key={el.id}
+                                  onClick={() => {
+                                    // Smoothly scroll down or highlight heading on client side simulation
+                                    const idString = `heading-${el.text}`;
+                                    const targetElem = document.getElementById(idString);
+                                    if (targetElem) {
+                                      targetElem.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                                      targetElem.className += " animate-pulse bg-yellow-50 text-indigo-950 px-1 py-0.5 rounded";
+                                    } else {
+                                      alert(`📌 見出し「${el.text}」のセクションへスクロール案内します。`);
+                                    }
+                                  }}
+                                  className={`block text-left text-xs font-semibold w-full py-1 hover:text-rose-500 transition-colors ${
+                                    el.isSub ? 'pl-4 text-slate-500' : 'text-slate-700'
+                                  }`}
                                 >
-                                  <span>👤 simulated メンバーとしてログイン</span>
-                                  <ArrowRight className="h-3 w-3" />
+                                  {el.text}
                                 </button>
-                              </div>
-                            </div>
-                          ) : (
-                            <div className="space-y-1.5">
-                              <h4 className="text-xs font-black text-slate-900 flex items-center justify-center gap-1">
-                                <span>🔒 ライセンス不足によるロック中</span>
-                              </h4>
-                              <p className="text-[10px] text-slate-500 leading-relaxed font-semibold">
-                                この知見記事は <strong className="text-rose-600 font-bold">{activeArticle.requiredPlan}限定ノウハウ</strong> です。<br />
-                                あなたのアカウント契約プラン（模擬ステータス: <span className="text-slate-800 font-extrabold">[{simulatedPlan}]</span>）では権限がありません。
-                              </p>
-                              
-                              <div className="pt-2 space-y-1.5">
-                                <p className="text-[9px] text-indigo-500 font-bold">💡 下記から模擬アカウントをアップグレードしてテストできます</p>
-                                <div className="grid grid-cols-2 gap-2">
-                                  {['Pro', 'Platinum'].map((p) => (
-                                    <button
-                                      key={p}
-                                      type="button"
-                                      onClick={() => {
-                                        if (setSimulatedPlan) {
-                                          setSimulatedPlan(p as any);
-                                          alert(`💼 コントロール: 模擬プランを「${p}」に変更しました。即時にロック解除されます。`);
-                                        }
-                                      }}
-                                      className="py-1 px-2 border border-indigo-200 hover:border-indigo-400 bg-indigo-50/50 hover:bg-indigo-50 text-indigo-750 font-extrabold text-[9px] rounded cursor-pointer transition-all"
-                                    >
-                                      {p}プランに切り替え
-                                    </button>
-                                  ))}
-                                </div>
-                              </div>
-                            </div>
-                          )}
-
-                          <div className="text-[9.5px] text-slate-400 font-semibold border-t border-slate-100 pt-2 flex items-center justify-center gap-1">
-                            <span>「自社サイトでノウハウを一般公開し、会員だけが読めるようにしたい」というご要望の挙動シミュレーションです。</span>
-                          </div>
-                        </div>
-                      </div>
+                              ))}
+                            </nav>
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
                     </div>
                   )}
+
+                  {/* Editorial Lead Blockquote Summary */}
+                  <div className="bg-slate-50 border-l-4 border-rose-400 rounded-r-xl p-4 text-[12px] leading-relaxed text-slate-650 text-justify font-medium">
+                    <strong className="text-slate-900 font-bold block mb-1">💡 記事の要約ロードマップ:</strong> {activeArticle.excerpt}
+                  </div>
+
+                  {/* Body Content with Paywall and blurred elements */}
+                  <div className="relative pt-2">
+                    {checkAccessibility(activeArticle) ? (
+                      <div className="space-y-4">
+                        {renderFormattedContent(activeArticle.content)}
+
+                        {/* Highly Interactive Support / Sync Button modeled like note.com Creator Support tool */}
+                        <div className="mt-12 bg-rose-50/20 border border-slate-200 rounded-3xl p-6 text-center space-y-4">
+                          <div className="max-w-md mx-auto space-y-2">
+                            <strong className="text-slate-900 font-black text-sm flex items-center justify-center gap-1">
+                              <Sparkles className="h-4.5 w-4.5 text-rose-500 animate-pulse" />
+                              <span>クリエイターとの実務・設定連動</span>
+                            </strong>
+                            <p className="text-slate-500 text-[11px] font-semibold leading-relaxed">
+                              この講義マニュアルに沿ったUTAGEシステム側のステップメール送信設定・LP構成・Stripe決済テンプレート群を、お使いのUTAGE Flow環境にワンクリックで即座に追加・適合できます。
+                            </p>
+                          </div>
+
+                          <div className="flex flex-col sm:flex-row items-center justify-center gap-2 max-w-sm mx-auto">
+                            <button
+                              type="button"
+                              onClick={() => alert('🚀 同期成功: お使いのUTAGEアカウント（検証用環境）に「知見カスタム連動設定テンプレート」を転写完了しました！')}
+                              className="w-full px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white font-extrabold text-[11px] rounded-lg transition-all cursor-pointer shadow-3xs flex items-center justify-center gap-1.5"
+                            >
+                              <span>設定テンプレートを環境に自動インポート</span>
+                              <ArrowRight className="h-4 w-4" />
+                            </button>
+                          </div>
+                        </div>
+
+                      </div>
+                    ) : (
+                      /* Perfect visual blur mockup representing typical premium paywall cover on note.com */
+                      <div className="relative">
+                        {/* Static teaser lines that fade into complete blur */}
+                        <div className="space-y-4 select-none pointer-events-none opacity-20 filter blur-xs">
+                          <h3 className="text-sm font-black text-slate-900 mt-6 mb-2.5 pb-1 border-b border-slate-100">
+                            ### 実務適用ステップ：自動連携の設計手順
+                          </h3>
+                          <p className="text-xs text-slate-650 leading-loose">
+                            実際のマーケティング運用でこの数値を1ピクセル誤るだけで、コンバージョンファネル全体のトラッキング損失を引き起こす危険性があります。まずは、以下のパラメータ表に沿って変数を登録。
+                          </p>
+                          <p className="text-xs text-slate-650 leading-loose">
+                            UTAGEシステムの「外部決済通知API(Webhooks)」に、以下のシークレットパスを設定することで、自動の顧客追跡バッチ処理が起動します。
+                          </p>
+                        </div>
+
+                        {/* Fully custom note-style Paywall Cover Overlay */}
+                        <div className="absolute inset-0 bg-gradient-to-t from-white via-white/95 to-transparent flex flex-col items-center justify-end text-center p-4 pb-12 pt-16">
+                          <div className="max-w-md w-full space-y-5 bg-white border border-slate-200 rounded-3xl p-6 shadow-md relative -top-2">
+                            
+                            {/* Header Paywall indicators */}
+                            <div className="space-y-2">
+                              <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-slate-950 text-white text-[10px] font-bold uppercase tracking-wider">
+                                👑 Premium 会員限定
+                              </span>
+                              <h3 className="text-sm md:text-base font-black text-slate-905 pt-1.5">
+                                この続きは、対象プランのご契約後に読めます。
+                              </h3>
+                              <p className="text-[11px] text-slate-450 leading-relaxed font-semibold">
+                                こちらの記事には、具体的なUTAGEのURLパス設定、トラブルシューティング手法、および実践可能な決済回収プロトコルの詳細などの具体的な極秘知見が記述されています。
+                              </p>
+                            </div>
+
+                            {/* Options to login or simulation upgrade within client panel */}
+                            <div className="border-t border-b border-slate-100 py-4 my-2 text-left space-y-3">
+                              
+                              {/* Guest User Option Info */}
+                              {previewMode === 'public_guest' ? (
+                                <div className="space-y-2.5">
+                                  <p className="text-[10.5px] text-slate-500 font-semibold leading-normal">
+                                    一般の訪問ゲストさまは、模擬ログイン機能から「検証アカウント」としてメンバー表示に切り替えることですぐに自習画面をテストできます。
+                                  </p>
+                                  <button
+                                    type="button"
+                                    onClick={() => setPreviewMode('logged_in')}
+                                    className="w-full py-2 bg-rose-500 hover:bg-rose-600 text-white font-extrabold text-[11px] rounded-lg transition-all cursor-pointer flex items-center justify-center gap-1.5 shadow-3xs"
+                                  >
+                                    <span>👤 クライアントメンバーとして模擬ログイン</span>
+                                    <ArrowRight className="h-3.5 w-3.5" />
+                                  </button>
+                                </div>
+                              ) : (
+                                /* Logged-in but deficient contract levels */
+                                <div className="space-y-3">
+                                  <div className="p-2.5 bg-rose-50/50 rounded-xl border border-rose-100 flex items-start gap-2 text-[10.5px]">
+                                    <AlertCircle className="h-4 w-4 text-red-500 shrink-0 mt-0.5" />
+                                    <div>
+                                      <p className="font-extrabold text-slate-800">契約レベルが不足しています</p>
+                                      <p className="text-slate-500 text-[10px] leading-relaxed">
+                                        この記事の閲覧には <strong className="text-rose-605">{activeArticle.requiredPlan}プラン以上の契約</strong> が必要です。<br />
+                                        現在のご契約想定: <span className="font-bold text-slate-800 font-mono">[{simulatedPlan}]</span>
+                                      </p>
+                                    </div>
+                                  </div>
+
+                                  <div className="space-y-2">
+                                    <p className="text-[9.5px] text-indigo-500 font-bold">💡 検証機能：お好みのテストプランに変更して、ロック解除をお試しできます</p>
+                                    <div className="grid grid-cols-2 gap-2">
+                                      {['Pro', 'Platinum'].map((p) => {
+                                        const isCurrent = simulatedPlan === p;
+                                        return (
+                                          <button
+                                            key={p}
+                                            type="button"
+                                            onClick={() => {
+                                              if (setSimulatedPlan) {
+                                                setSimulatedPlan(p as any);
+                                                alert(`💼 コントロール: 模擬検証プランを「${p}」に変更しました。即時にロック解除されます。`);
+                                              }
+                                            }}
+                                            className={`py-1.5 px-2 border text-center font-extrabold text-[10px] rounded-lg cursor-pointer transition-all ${
+                                              isCurrent 
+                                                ? 'bg-indigo-600 text-white border-indigo-600'
+                                                : 'border-slate-200 hover:border-indigo-400 bg-slate-50 hover:bg-indigo-50 text-indigo-750'
+                                            }`}
+                                          >
+                                            {p}プランに即時切替
+                                          </button>
+                                        );
+                                      })}
+                                    </div>
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+
+                            <p className="text-[9px] text-slate-400 text-center font-medium">
+                              「魅力的な導入文（要約）を一般公開し、会員になるとフル記事を読める。上位プランになると超濃密記事を段階開放する」という本格的な記事配信サブスク（note風）を高度にデモンストレーションしています。
+                            </p>
+                          </div>
+                        </div>
+
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Note Share Footer Action line */}
+                  <div className="flex items-center justify-between border-t border-slate-100 pt-5 mt-10 text-slate-450 text-xs">
+                    
+                    {/* Bottom Like and Bookmark row */}
+                    <div className="flex items-center gap-3">
+                      {/* Interactive Heart (Suki) details button */}
+                      <button
+                        type="button"
+                        onClick={(e) => handleLikeToggle(activeArticle.id, e)}
+                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full border transition-all text-[11px] cursor-pointer ${
+                          (likesState[activeArticle.id]?.liked)
+                            ? 'bg-rose-50 text-rose-600 border-rose-200 font-extrabold'
+                            : 'bg-slate-50 text-slate-500 border-slate-200 hover:bg-slate-100'
+                        }`}
+                      >
+                        <Heart className={`h-4 w-4 ${(likesState[activeArticle.id]?.liked) ? 'fill-rose-500 text-rose-500' : 'text-slate-400'}`} />
+                        <span>読者スキ {(likesState[activeArticle.id]?.count) || 32}</span>
+                      </button>
+
+                      {/* Share public link button standard */}
+                      <button
+                        type="button"
+                        onClick={() => handleCopyLink(activeArticle.id)}
+                        className={`text-[10.5px] font-bold px-3 py-1.5 rounded-full border flex items-center gap-1 cursor-pointer transition-all ${
+                          copiedId === activeArticle.id
+                            ? 'bg-emerald-50 text-emerald-800 border-emerald-300'
+                            : 'bg-slate-50 text-slate-600 hover:bg-slate-100 border-slate-200'
+                        }`}
+                      >
+                        {copiedId === activeArticle.id ? <Check className="h-3.5 w-3.5 text-emerald-600" /> : <Copy className="h-3.5 w-3.5" />}
+                        <span>{copiedId === activeArticle.id ? '一般等リンクコピー済' : '共有用にURLコピー'}</span>
+                      </button>
+                    </div>
+
+                    <span className="text-[10px] text-slate-400">
+                      © {activeArticle.author}. All Rights Reserved.
+                    </span>
+                  </div>
+
                 </div>
-              </motion.div>
+              </motion.article>
             ) : (
-              <div className="bg-white rounded-3xl border border-slate-200/90 p-12 text-center space-y-3 min-h-[500px] flex flex-col items-center justify-center">
-                <div className="w-12 h-12 rounded-full bg-slate-50 flex items-center justify-center text-slate-300">
-                  <BookOpen className="h-6 w-6" />
+              <div className="bg-white rounded-3xl border border-slate-200/95 p-16 text-center space-y-4 min-h-[600px] flex flex-col items-center justify-center">
+                <div className="w-14 h-14 rounded-full bg-slate-50 flex items-center justify-center text-slate-300">
+                  <BookOpen className="h-7 w-7" />
                 </div>
-                <h4 className="text-sm font-black text-slate-800">ノウハウを選択してください</h4>
-                <p className="text-xs text-slate-400 max-w-xs">
-                  左側の一覧から知見Wiki記事を選択すると、こちらに内容と公開ステータス詳細が表示されます。
+                <h4 className="text-sm font-black text-slate-800">知見Wikiを選択してください</h4>
+                <p className="text-xs text-slate-400 max-w-xs leading-relaxed">
+                  左側の一覧から気になるマーケティング講義をクリックしてください。美しい誌面レイアウトで内容が表示されます。
                 </p>
               </div>
             )}

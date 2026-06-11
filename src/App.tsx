@@ -7,6 +7,7 @@ import SettingsView from './components/Settings';
 import ProjectDetailModal from './components/ProjectDetailModal';
 import ProjectDetailView, { parseDeadlineStatus } from './components/ProjectDetailView';
 import LearningHub from './components/LearningHub';
+import GuideView from './components/GuideView';
 import NewProjectModal from './components/NewProjectModal';
 import AnalysisView from './components/AnalysisView';
 import TeamManagement from './components/TeamManagement';
@@ -213,6 +214,8 @@ export default function App() {
             setSimulatedPlan={setSimulatedPlan}
           />
         );
+      case 'guide':
+        return <GuideView />;
       case 'admin-console':
         return (
           <AdminConsole 
@@ -263,6 +266,7 @@ export default function App() {
                activeTab === 'team' ? '組織・専属メンバー' :
                activeTab === 'templates' ? 'ファネルテンプレート' :
                activeTab === 'learning' ? '学習ナレッジ・知見Wiki' :
+               activeTab === 'guide' ? '使い方マニュアル' :
                activeTab === 'admin-console' ? '総合管理者コンソール' :
                'システム設定'}
             </span>
