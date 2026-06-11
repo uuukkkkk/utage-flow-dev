@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Sidebar from './components/Sidebar';
 import ProjectDashboard from './components/ProjectDashboard';
 import ClientList from './components/ClientList';
@@ -15,7 +15,7 @@ import AdminConsole from './components/AdminConsole';
 import { mockClients, mockProjects, mockTemplates, mockTeamMembers, mockWikiArticles } from './data/mockData';
 import { Project, Client, ProjectStatus, Template, TeamMember, UserRole, WikiArticle } from './types';
 import { motion, AnimatePresence } from 'motion/react';
-import { LayoutDashboard, Users, Workflow, Settings as SettingsIcon, Bell, AlertTriangle, CheckCircle2, Clock, Calendar } from 'lucide-react';
+import { LayoutDashboard, Users, Workflow, Settings as SettingsIcon, Bell, AlertTriangle, CheckCircle2, Clock, Calendar, X } from 'lucide-react';
 
 export default function App() {
   const [activeTab, setActiveTab] = useState('projects');
@@ -24,6 +24,18 @@ export default function App() {
   const [hostMode, setHostMode] = useState<'internal' | 'saas'>('saas');
   const [isSetupCompleted, setIsSetupCompleted] = useState<boolean>(true);
   const [simulatedPlan, setSimulatedPlan] = useState<'Starter' | 'Pro' | 'Platinum'>('Pro'); // SaaS tenant plan simulator
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
+
+  // Safely override window.alert to render our custom high-fidelity notification toast instead
+  useEffect(() => {
+    const originalAlert = window.alert;
+    window.alert = (message: any) => {
+      setToastMessage(message ? String(message) : '');
+    };
+    return () => {
+      window.alert = originalAlert;
+    };
+  }, []);
   
   // App-level data states (local persistence simulation)
   const [projects, setProjects] = useState<Project[]>(mockProjects);
@@ -463,6 +475,35 @@ export default function App() {
               setSelectedDetailedProject(null);
             }}
           />
+        )}
+      </AnimatePresence>
+
+      {/* Floating System Notification Toast to replace modern iframe-blocked alert boxes */}
+      <AnimatePresence>
+        {toastMessage && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9, y: 35 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.93, y: 15 }}
+            className="fixed bottom-6 right-6 z-[9999] max-w-sm w-[90%] sm:w-85 bg-slate-900 shadow-xl rounded-2xl p-4 border border-slate-800 text-white flex items-start gap-3.5"
+          >
+            <div className="w-8 h-8 rounded-xl bg-indigo-500/10 border border-indigo-550/25 flex items-center justify-center text-indigo-400 shrink-0">
+              <CheckCircle2 className="h-4.5 w-4.5" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-[9.5px] font-extrabold text-slate-400 uppercase tracking-widest">UTAGE Flow 通知システム</p>
+              <p className="text-[11px] font-extrabold text-slate-200 mt-1 leading-relaxed whitespace-pre-wrap">
+                {toastMessage}
+              </p>
+            </div>
+            <button 
+              onClick={() => setToastMessage(null)}
+              className="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 hover:text-white transition-colors cursor-pointer text-slate-400 shrink-0"
+              aria-label="閉じる"
+            >
+              <X className="h-3 w-3" />
+            </button>
+          </motion.div>
         )}
       </AnimatePresence>
     </div>

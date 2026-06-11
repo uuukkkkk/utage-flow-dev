@@ -614,7 +614,7 @@ export default function AdminConsole({
               <div className="space-y-6">
                 
                 {/* Active logs console */}
-                <div className="bg-slate-950 text-slate-350 p-5 rounded-3xl border border-slate-850 shadow-xl space-y-4 font-mono text-[11px]">
+                <div className="bg-slate-950 text-slate-300 p-5 rounded-3xl border border-slate-800 shadow-xl space-y-4 font-mono text-[11px]">
                   <div className="flex items-center justify-between border-b border-slate-800 pb-2">
                     <span className="text-xs font-black text-indigo-400 uppercase tracking-widest">SYSTEM MONITOR STREAM</span>
                     <span className="inline-block w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
@@ -623,14 +623,14 @@ export default function AdminConsole({
                   <div className="space-y-3 max-h-[300px] overflow-y-auto pr-1">
                     {systemLogs.map((log, idx) => (
                       <div key={idx} className="leading-relaxed hover:text-white transition-colors">
-                        <span className="text-slate-500">[{log.time}]</span>{' '}
-                        {log.type === 'success' && <span className="text-emerald-450 font-bold">[OK]</span>}
-                        {log.type === 'register' && <span className="text-indigo-455 font-black">[REG]</span>}
+                        <span className="text-slate-400">[{log.time}]</span>{' '}
+                        {log.type === 'success' && <span className="text-emerald-400 font-bold">[OK]</span>}
+                        {log.type === 'register' && <span className="text-indigo-405 font-black">[REG]</span>}
                         {log.type === 'revenue' && <span className="text-amber-400 font-bold">[PAY]</span>}
                         {log.type === 'backup' && <span className="text-teal-400">[BACKUP]</span>}
-                        {log.type === 'warning' && <span className="text-rose-450 font-bold">[WARN]</span>}
+                        {log.type === 'warning' && <span className="text-rose-400 font-bold">[WARN]</span>}
                         {log.type === 'info' && <span className="text-slate-300 font-medium">[SYSTEM]</span>}{' '}
-                        <span className="text-slate-105 font-medium">{log.text}</span>
+                        <span className="text-slate-100 font-semibold">{log.text}</span>
                       </div>
                     ))}
                   </div>

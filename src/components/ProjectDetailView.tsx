@@ -1209,19 +1209,19 @@ ${aiGeneratedData.emailBody}
                     return (
                       <div 
                         key={step.id} 
-                        className={`transition-all duration-150 rounded-xl border p-3 flex flex-col md:flex-row md:items-center justify-between gap-3.5 ${containerStyle}`}
+                        className={`transition-all duration-150 rounded-xl border p-4.5 flex flex-col gap-3.5 ${containerStyle}`}
                       >
-                        {/* Left block: Checkbox + Task Name + Badges */}
-                        <div className="flex items-start gap-3 min-w-0 md:flex-1">
+                        {/* Upper row: Checkbox + Task Name (Spacious full horizontal space) */}
+                        <div className="flex items-start gap-3 w-full min-w-0">
                           <input
                             type="checkbox"
                             checked={isSelected}
                             onChange={() => handleToggleStepSelection(step.id)}
                             className="w-4.5 h-4.5 rounded-md text-indigo-650 border-slate-300 focus:ring-indigo-500 cursor-pointer shrink-0 mt-0.5"
                           />
-                          <div className="min-w-0 space-y-1">
+                          <div className="min-w-0 flex-1 space-y-1">
                             <div className="flex items-center gap-2 flex-wrap">
-                              <span className="text-xs font-extrabold text-slate-800 leading-snug break-words">
+                              <span className="text-xs sm:text-sm font-extrabold text-slate-800 leading-snug break-words">
                                 {step.name}
                               </span>
                               <span className={`px-2 py-0.5 rounded-md text-[9px] font-extrabold border shrink-0 ${getStepStatusClasses(step.status)}`}>
@@ -1243,11 +1243,12 @@ ${aiGeneratedData.emailBody}
                           </div>
                         </div>
 
-                        {/* Right block: Assignee + Date Input + Status switch controls */}
-                        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 text-xs w-full md:w-auto md:justify-end shrink-0">
-                          <div className="flex items-center gap-2 w-full sm:w-auto">
+                        {/* Lower row: Metadata Inputs & Status Toggles with sub-divider */}
+                        <div className="pt-3 border-t border-slate-100 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 w-full text-xs">
+                          {/* Left: Assignee and Target Date selectors side-by-side */}
+                          <div className="flex items-center gap-2.5 flex-wrap flex-1 min-w-0">
                             {/* Assignee select */}
-                            <div className="flex-1 sm:w-[120px] sm:flex-initial shrink-0">
+                            <div className="w-[140px] shrink-0">
                               <select
                                 value={step.assignee || ''}
                                 onChange={(e) => {
@@ -1258,7 +1259,7 @@ ${aiGeneratedData.emailBody}
                                   const updatedProj: Project = { ...project, funnelSteps: updatedSteps };
                                   onUpdateProject(updatedProj);
                                 }}
-                                className="w-full text-[11px] font-bold text-slate-705 bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 sm:py-1 focus:ring-1 focus:ring-indigo-500 cursor-pointer"
+                                className="w-full text-[11px] font-bold text-slate-705 bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 focus:ring-1 focus:ring-indigo-500 cursor-pointer"
                               >
                                 <option value="">👤 未設定</option>
                                 {members.map(m => (
@@ -1271,7 +1272,7 @@ ${aiGeneratedData.emailBody}
                             </div>
 
                             {/* Date input */}
-                            <div className="w-[85px] shrink-0 font-sans">
+                            <div className="w-[95px] shrink-0 font-sans">
                               <input
                                 type="text"
                                 value={step.targetDate || ''}
@@ -1284,19 +1285,19 @@ ${aiGeneratedData.emailBody}
                                   onUpdateProject(updatedProj);
                                 }}
                                 placeholder="例: 6月20日"
-                                className="w-full text-[11px] font-bold text-slate-705 bg-white border border-slate-200 rounded-lg px-2 py-1.5 sm:py-1 text-center focus:ring-1 focus:ring-indigo-500"
+                                className="w-full text-[11px] font-bold text-slate-705 bg-white border border-slate-200 rounded-lg px-2 py-1.5 text-center focus:ring-1 focus:ring-indigo-500"
                               />
                             </div>
                           </div>
 
-                          {/* Status toggle tag list */}
-                          <div className="flex items-center gap-0.5 select-none border-t border-slate-100 pt-2.5 sm:border-t-0 sm:pt-0 sm:border-l sm:border-slate-150 sm:pl-3 w-full sm:w-auto justify-between sm:justify-start shrink-0">
+                          {/* Right: Status buttons toggle selection bar */}
+                          <div className="flex items-center gap-1 select-none shrink-0 w-full sm:w-auto overflow-x-auto whitespace-nowrap py-1">
                             {(['未着手', '制作中', '確認中', '完了'] as const).map((st) => (
                               <button
                                 key={st}
                                 type="button"
                                 onClick={() => handleStepStatusChange(step.id, st)}
-                                className={`flex-1 sm:flex-initial text-center px-2 py-1 sm:px-1.5 sm:py-0.5 rounded text-[9.5px] sm:text-[8px] font-black border transition-all cursor-pointer ${
+                                className={`px-2.5 py-1 rounded text-[10px] font-extrabold border transition-all cursor-pointer ${
                                   step.status === st 
                                     ? 'bg-indigo-600 text-white border-indigo-600 shadow-3xs' 
                                     : 'bg-white text-slate-550 border-slate-200 hover:bg-slate-50'
