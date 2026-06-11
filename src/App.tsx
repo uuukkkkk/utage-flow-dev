@@ -20,6 +20,7 @@ import { LayoutDashboard, Users, Workflow, Settings as SettingsIcon, Bell, Alert
 export default function App() {
   const [activeTab, setActiveTab] = useState('projects');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [hostMode, setHostMode] = useState<'internal' | 'saas'>('saas');
   const [isSetupCompleted, setIsSetupCompleted] = useState<boolean>(true);
   const [simulatedPlan, setSimulatedPlan] = useState<'Starter' | 'Pro' | 'Platinum'>('Pro'); // SaaS tenant plan simulator
@@ -241,17 +242,19 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-900 font-sans flex antialiased">
+    <div className="min-h-screen bg-slate-50/70 text-slate-900 font-sans flex antialiased">
       {/* Sidebar for Navigation */}
       <Sidebar 
         activeTab={activeTab} 
         setActiveTab={setActiveTab} 
         isOpen={isSidebarOpen}
         setIsOpen={setIsSidebarOpen}
+        isCollapsed={isSidebarCollapsed}
+        setIsCollapsed={setIsSidebarCollapsed}
       />
 
       {/* Main Container */}
-      <div className="flex-1 md:pl-64 flex flex-col min-h-screen">
+      <div className={`flex-1 flex flex-col min-h-screen transition-all duration-300 ${isSidebarCollapsed ? 'md:pl-20' : 'md:pl-64'}`}>
         {/* Top Header Controls */}
         <header className="h-20 border-b border-slate-100 bg-white sticky top-0 z-30 px-6 flex items-center justify-between">
           {/* Left space filler or mobile spacing placeholder */}

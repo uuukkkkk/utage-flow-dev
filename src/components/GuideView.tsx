@@ -37,24 +37,25 @@ export default function GuideView() {
   return (
     <div className="space-y-6 text-slate-800">
       {/* Hero Header Section */}
-      <div className="bg-gradient-to-r from-indigo-900 via-slate-900 to-indigo-950 text-white rounded-3xl p-6 md:p-8 relative overflow-hidden shadow-lg border border-indigo-850">
-        <div className="absolute top-0 right-0 w-80 h-80 bg-indigo-500/10 rounded-full blur-3xl -z-10" />
+      <div className="bg-gradient-to-br from-rose-50/40 via-white to-indigo-50/55 rounded-3xl p-6 md:p-8 relative overflow-hidden shadow-xs border border-slate-200/90">
+        <div className="absolute top-0 right-0 w-64 h-64 bg-rose-100/20 rounded-full blur-3xl -z-10" />
+        <div className="absolute bottom-0 left-10 w-64 h-64 bg-indigo-150/15 rounded-full blur-3xl -z-10" />
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
-          <div className="space-y-2">
-            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-indigo-500/20 text-indigo-300 text-xs font-semibold border border-indigo-500/30">
-              <BookOpen className="h-3.5 w-3.5 animate-pulse" />
+          <div className="space-y-2.5">
+            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-rose-50 border border-rose-100 text-rose-650 text-[10.5px] font-black shadow-3xs">
+              <BookOpen className="h-3.5 w-3.5" />
               <span>システム公式取扱マニュアル</span>
             </div>
-            <h2 className="text-2xl md:text-3xl font-black tracking-tight">UTAGE Flow 使い方ガイド & 設計規定書</h2>
-            <p className="text-slate-350 text-xs md:text-sm max-w-xl">
+            <h2 className="text-2xl md:text-3xl font-black tracking-tight text-slate-900">UTAGE Flow 使い方ガイド & 設計規定書</h2>
+            <p className="text-slate-500 text-xs md:text-sm max-w-xl font-medium leading-relaxed">
               本システムは、UTAGEシステム構築プロフェッショナルのためのワークスペース管理ハブです。高度なタスク管理、Google社システム連携、Gemini AIコピーライターを統合した生産性プラットフォームです。
             </p>
           </div>
-          <div className="shrink-0 bg-white/5 border border-white/10 rounded-2xl p-4 backdrop-blur-xs flex items-center gap-3">
-            <div className="w-10 h-10 bg-indigo-500 rounded-xl flex items-center justify-center font-bold text-white shadow-lg">U</div>
+          <div className="shrink-0 bg-white/80 border border-slate-200 rounded-2xl p-4 flex items-center gap-3 shadow-3xs">
+            <div className="w-10 h-10 bg-gradient-to-tr from-rose-500 to-indigo-600 rounded-xl flex items-center justify-center font-black text-white shadow-xs">U</div>
             <div>
-              <p className="text-xs font-bold text-white">UTAGE Flow</p>
-              <p className="text-[10px] text-indigo-300">Version 1.0.0 (Latest)</p>
+              <p className="text-xs font-black text-slate-800">UTAGE Flow</p>
+              <p className="text-[10px] text-slate-400 font-bold block mt-0.5">Version 1.0.0 (Latest)</p>
             </div>
           </div>
         </div>

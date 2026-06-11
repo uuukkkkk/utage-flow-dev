@@ -1244,57 +1244,59 @@ ${aiGeneratedData.emailBody}
                         </div>
 
                         {/* Right block: Assignee + Date Input + Status switch controls */}
-                        <div className="flex flex-wrap items-center gap-3.5 text-xs">
-                          {/* Assignee select */}
-                          <div className="w-[115px] shrink-0">
-                            <select
-                              value={step.assignee || ''}
-                              onChange={(e) => {
-                                const updatedSteps = steps.map(s => 
-                                  s.id === step.id ? { ...s, assignee: e.target.value } : s
-                                );
-                                setSteps(updatedSteps);
-                                const updatedProj: Project = { ...project, funnelSteps: updatedSteps };
-                                onUpdateProject(updatedProj);
-                              }}
-                              className="w-full text-[11px] font-bold text-slate-705 bg-white border border-slate-200 rounded-lg px-2 py-1 focus:ring-1 focus:ring-indigo-500 cursor-pointer"
-                            >
-                              <option value="">👤 未設定</option>
-                              {members.map(m => (
-                                <option key={m.id} value={m.name}>{m.name} ({m.role.substring(0, 8)})</option>
-                              ))}
-                              {step.assignee && !members.some(m => m.name === step.assignee) && (
-                                <option value={step.assignee}>{step.assignee}</option>
-                              )}
-                            </select>
-                          </div>
+                        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 text-xs w-full md:w-auto md:justify-end shrink-0">
+                          <div className="flex items-center gap-2 w-full sm:w-auto">
+                            {/* Assignee select */}
+                            <div className="flex-1 sm:w-[120px] sm:flex-initial shrink-0">
+                              <select
+                                value={step.assignee || ''}
+                                onChange={(e) => {
+                                  const updatedSteps = steps.map(s => 
+                                    s.id === step.id ? { ...s, assignee: e.target.value } : s
+                                  );
+                                  setSteps(updatedSteps);
+                                  const updatedProj: Project = { ...project, funnelSteps: updatedSteps };
+                                  onUpdateProject(updatedProj);
+                                }}
+                                className="w-full text-[11px] font-bold text-slate-705 bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 sm:py-1 focus:ring-1 focus:ring-indigo-500 cursor-pointer"
+                              >
+                                <option value="">👤 未設定</option>
+                                {members.map(m => (
+                                  <option key={m.id} value={m.name}>{m.name} ({m.role.substring(0, 8)})</option>
+                                ))}
+                                {step.assignee && !members.some(m => m.name === step.assignee) && (
+                                  <option value={step.assignee}>{step.assignee}</option>
+                                )}
+                              </select>
+                            </div>
 
-                          {/* Date input */}
-                          <div className="w-[85px] shrink-0">
-                            <input
-                              type="text"
-                              value={step.targetDate || ''}
-                              onChange={(e) => {
-                                const updatedSteps = steps.map(s => 
-                                  s.id === step.id ? { ...s, targetDate: e.target.value } : s
-                                );
-                                setSteps(updatedSteps);
-                                const updatedProj: Project = { ...project, funnelSteps: updatedSteps };
-                                onUpdateProject(updatedProj);
-                              }}
-                              placeholder="例: 6月20日"
-                              className="w-full text-[11px] font-bold text-slate-700 bg-white border border-slate-200 rounded-lg px-2 py-1 text-center focus:ring-1 focus:ring-indigo-500"
-                            />
+                            {/* Date input */}
+                            <div className="w-[85px] shrink-0 font-sans">
+                              <input
+                                type="text"
+                                value={step.targetDate || ''}
+                                onChange={(e) => {
+                                  const updatedSteps = steps.map(s => 
+                                    s.id === step.id ? { ...s, targetDate: e.target.value } : s
+                                  );
+                                  setSteps(updatedSteps);
+                                  const updatedProj: Project = { ...project, funnelSteps: updatedSteps };
+                                  onUpdateProject(updatedProj);
+                                }}
+                                placeholder="例: 6月20日"
+                                className="w-full text-[11px] font-bold text-slate-705 bg-white border border-slate-200 rounded-lg px-2 py-1.5 sm:py-1 text-center focus:ring-1 focus:ring-indigo-500"
+                              />
+                            </div>
                           </div>
 
                           {/* Status toggle tag list */}
-                          <div className="flex items-center gap-1 select-none border-l border-slate-150 pl-3.5">
+                          <div className="flex items-center gap-0.5 select-none border-t border-slate-100 pt-2.5 sm:border-t-0 sm:pt-0 sm:border-l sm:border-slate-150 sm:pl-3 w-full sm:w-auto justify-between sm:justify-start shrink-0">
                             {(['未着手', '制作中', '確認中', '完了'] as const).map((st) => (
                               <button
                                 key={st}
                                 type="button"
                                 onClick={() => handleStepStatusChange(step.id, st)}
-                                className={`px-1.5 py-0.5 rounded text-[8px] font-black border transition-all cursor-pointer ${
+                                className={`flex-1 sm:flex-initial text-center px-2 py-1 sm:px-1.5 sm:py-0.5 rounded text-[9.5px] sm:text-[8px] font-black border transition-all cursor-pointer ${
                                   step.status === st 
                                     ? 'bg-indigo-600 text-white border-indigo-600 shadow-3xs' 
                                     : 'bg-white text-slate-550 border-slate-200 hover:bg-slate-50'
